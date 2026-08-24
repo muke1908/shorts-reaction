@@ -10,7 +10,8 @@
     "copilot:scan": "tsx scripts/run-copilot-workflow.ts",
     "serve": "tsx src/server/index.ts",
     "dev:ui": "vite --config vite.config.ts",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "test:ui": "tsx --test tests/landing-quick-reaction-ui.e2e.ts"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",

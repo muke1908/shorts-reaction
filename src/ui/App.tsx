@@ -19,6 +19,9 @@ import type {
 } from "../shared/types";
 
 const DIRECT_IMPORTS_CATEGORY_SLUG = "direct-imports";
+const PIPELINE_PATHS = new Set(["/pipeline", "/dashboard"]);
+const QUICK_REACTION_PATHS = new Set(["/quick-reaction"]);
+const ADVANCED_REACTION_PATHS = new Set(["/quick-reaction/advanced", "/advanced/user-reaction"]);
 
 type AppRoute =
   | { kind: "feature-landing" }
@@ -48,15 +51,15 @@ function parseAppRoute(location: Location): AppRoute {
     return { kind: "feature-landing" };
   }
 
-  if (location.pathname === "/pipeline") {
+  if (PIPELINE_PATHS.has(location.pathname)) {
     return { kind: "pipeline" };
   }
 
-  if (location.pathname === "/quick-reaction") {
+  if (QUICK_REACTION_PATHS.has(location.pathname)) {
     return { kind: "quick-reaction" };
   }
 
-  if (location.pathname !== "/quick-reaction/advanced" && location.pathname !== "/advanced/user-reaction") {
+  if (!ADVANCED_REACTION_PATHS.has(location.pathname)) {
     return { kind: "feature-landing" };
   }
 
@@ -344,8 +347,9 @@ export function App(): JSX.Element {
         <div className="hero__header-row">
           <div>
             <p className="eyebrow">LLM pipeline</p>
-            <p>
-              Run a fresh scan, rank the top 10 likely viral Shorts, archive each scan iteration with its timestamp, and generate stacked 9:16 reaction-layout videos from the latest list.
+            <h1 className="hero__title">Discover, rank, and process Shorts from one control surface.</h1>
+            <p className="hero__copy">
+              Run fresh scans, let Copilot rank likely viral Shorts, keep the library organized by category and day, and trigger reaction generation from the results.
             </p>
           </div>
           <button type="button" className="secondary-button" onClick={() => {

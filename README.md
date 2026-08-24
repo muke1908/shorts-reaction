@@ -1,20 +1,20 @@
 # YouTube Shorts Reaction Studio
 
-This project now ships as a **two-surface reaction studio**:
+This repository ships a **two-surface product** for making reaction content from YouTube Shorts:
 
-1. **Quick reaction creator** — paste a YouTube Short, open the 9:16 staged recorder, then play, react, and record locally.
-2. **LLM pipeline** — scan YouTube Shorts for a topic, let Copilot review and rank virality, persist JSON dumps by category and day, and generate reaction-video outputs from the ranked list.
+1. **Quick reaction** — paste a YouTube URL, open the recorder, then **play, react, and record** locally.
+2. **LLM-driven trending-video pipeline** — scan a topic, let Copilot discover and rank likely viral Shorts, then **generate reaction outputs automatically** with the built-in processing pipeline.
 
-Both surfaces are available from the app landing page and share the same server, downloader, provider, and composition stack.
+Both surfaces are exposed from the same app, share the same Node/React stack, and reuse the same downloader, provider, and 9:16 composition pipeline.
 
-## Product surfaces
+## Product surfaces at a glance
 
-| Surface | Route | Purpose |
+| Surface | Route | What it is for |
 | --- | --- | --- |
-| Feature chooser | `/` | Entry page that lets the user choose between the two major workflows |
-| Quick reaction creator | `/quick-reaction` | Paste a YouTube Shorts/watch URL, choose a user-media capture mode, and open the recorder |
-| Advanced stage recorder | `/quick-reaction/advanced` | Immersive 9:16 source-plus-camera reaction canvas with manual record / play / pause / save flow |
-| LLM pipeline dashboard | `/pipeline` | Run Copilot-driven scans, browse ranked Shorts, process direct URLs, and manage generated outputs |
+| Feature chooser | `/` | Landing page that lets you choose between the two major workflows |
+| Quick reaction | `/quick-reaction` | Fast start flow for pasting a Short, picking a capture mode, and opening the recorder |
+| Advanced reaction recorder | `/quick-reaction/advanced` | Immersive 9:16 stage where you manually control playback, react, and record the composed canvas |
+| LLM pipeline dashboard | `/pipeline` | Copilot-driven discovery, ranking, categorization, direct URL processing, and automated reaction generation |
 
 ## Screenshots
 
@@ -22,119 +22,127 @@ Both surfaces are available from the app landing page and share the same server,
 
 ![Feature chooser](docs/assets/feature-landing.png)
 
-### Quick reaction creator
+### Quick reaction
 
-![Quick reaction creator](docs/assets/quick-reaction-start.png)
+![Quick reaction](docs/assets/quick-reaction-start.png)
 
 ### LLM pipeline dashboard
 
 ![LLM pipeline dashboard](docs/assets/pipeline-dashboard.png)
 
-## Quick reaction creator
+## Surface 1: Quick reaction
 
-The quick reaction flow is intentionally direct:
+The quick-reaction side of the product is for a creator who already knows which Short they want to respond to and wants the fastest path to a staged recording.
+
+### What it actually does
 
 1. Open `/quick-reaction`.
 2. Paste a YouTube Shorts, watch, or `youtu.be` URL.
-3. Choose a supported **user-media** capture provider.
-4. Open the staged recorder.
-5. Turn on the camera, start recording, and control source playback manually.
-6. Save to open the captured stage output in a new tab.
+3. Choose a **user-media capture mode**.
+4. Open the recorder.
+5. Turn the camera on, start recording, and manually play or pause the source video.
+6. Save the draft to open the captured stage output in a new browser tab.
 
-The advanced recorder captures the **actual rendered stage**, not just raw camera input:
+### Recorder behavior
 
-- source video in the top 60%
-- camera or anonymized user feed in the bottom 40%
-- manual play / pause timing driven by the user
-- local preview-first workflow for fast iteration
+The advanced recorder captures the **rendered 9:16 stage**, not just the raw webcam feed:
 
-Supported quick-reaction providers:
+- source video is shown in the **top 60%**
+- your camera feed is shown in the **bottom 40%**
+- microphone audio and source audio are mixed into the recording when available
+- playback is manual, so the creator decides exactly when to react
+- save is preview-first: the recorded draft opens in a new tab instead of immediately entering a background render flow
+
+### Quick reaction capture modes
 
 - **User media**
 - **User media + sunglasses**
 - **User media + pixelated**
 
-## LLM-first pipeline workflow
+Use this surface when the goal is: **I already have a Short; let me play, react, and record right now.**
 
-This app is intentionally **Copilot/LLM-driven**, not just an API scraper with a thin prompt on top. The LLM is responsible for the key judgment calls in the pipeline:
+## Surface 2: LLM-driven trending-video pipeline
 
-1. **Query planning** — turns a loose user topic into practical YouTube search queries.
-2. **Candidate review** — decides relevance, spam rejection, keep/drop, confidence, and virality framing.
-3. **Semantic recategorization** — rebuilds the category library on the fly, including splitting, renaming, or recreating categories when new scans reveal distinct topics.
-4. **Human-readable reporting** — writes the scan summary/report from the reviewed results.
+The pipeline side of the product is for discovery, ranking, organization, and reusable reaction generation.
 
-The deterministic code handles data collection, normalization, eligibility filters, persistence, and media composition. The LLM handles the meaning-heavy parts: **intent expansion, topical judgment, grouping, and explanation**.
+### What it actually does
 
-## What the pipeline does
-
-1. Accepts a free-text scan query from the CLI or UI.
-2. Uses Copilot CLI to turn that query into effective YouTube Shorts search terms.
-3. Collects candidate Shorts with a **hybrid source strategy**:
+1. Accepts a free-text topic from the CLI or UI.
+2. Uses Copilot to turn that topic into practical YouTube Shorts search queries.
+3. Collects candidate Shorts through a **hybrid source strategy**:
    - primary: YouTube Data API
-   - fallback: Playwright browser scraping of rendered YouTube Shorts pages
-   - candidates are kept only when they are **10-180 seconds** and have **comments enabled**
-4. Loads the markdown workflow contract from `workflow/*.md`.
-5. Uses Copilot CLI as the primary reviewer for:
-   - topic relevance
+   - fallback: Playwright-driven YouTube page scraping
+4. Keeps only candidates that are currently:
+   - **10 to 180 seconds** long
+   - **comments enabled**
+5. Uses Copilot again to review candidates for:
+   - relevance
    - spam rejection
    - keep/drop decisions
-   - virality ranking
-   - rationale and confidence
-6. Uses Copilot CLI again to **regroup the semantic category library**, reusing, splitting, renaming, or recreating topic categories when the stored videos show distinct contexts.
-7. Computes a supporting **evidence score** with a transparent score breakdown that emphasizes:
-   - reach
-   - view velocity
-   - engagement quality
-   - conversation intensity
-   - freshness
-8. Writes:
-   - `data/dumps/latest.json`
-   - `data/dumps/categories/index.json`
-   - `data/dumps/categories/<category>.json`
-   - `data/dumps/by-day/YYYY-MM-DD.json`
-   - `data/dumps/iterations/<timestamp>.json`
-   - `data/reports/<timestamp>.md`
-9. Serves a React UI that lets you type a scan query, click through parent categories, inspect the latest **20 records** per category, and trigger processing.
-10. Lets you paste a direct YouTube URL and run the processing pipeline without waiting for that Short to appear in a scan result.
-11. Lets you delete a ranked Short from the UI, which removes it from the stored dumps and deletes its generated job artifacts.
-12. Lets you click **Process** on a ranked Short to start a video-layout job that:
-   - downloads the selected Short
-   - asks the selected **Avatar Reaction Provider** for a reaction-layer video
-   - creates a **9:16** output canvas
-   - places the original Short in the **top 60%**
-   - places the provider video in the **bottom 40%**
-   - keeps source audio when present, and carries provider audio through when the selected provider clip includes it
-   - writes the generated output video under `data/generated/jobs/`
+   - virality scoring
+   - short rationale and confidence
+6. Rebuilds the semantic category library so stored results can be regrouped, split, renamed, or reused by topic.
+7. Persists ranked outputs to local JSON dumps and markdown reports.
+8. Serves the `/pipeline` dashboard so you can browse categories, inspect the latest records, delete entries, or process them into reaction videos.
+9. Supports **Process from URL** so a single pasted Short can go through the same processing pipeline without waiting for a scan.
 
-Current providers:
+### Automated reaction generation
 
-- **User media provider**: lets you record your own camera clip from the **Process** cell and sends it into the processing pipeline as the reaction layer
-- **User media + sunglasses**: reuses the same user-media path, but applies a live browser-side face-detection sunglasses overlay before the recorded clip is uploaded
-- **AI character**: uses a static server-hosted reaction clip normalized into the lower panel
-- **HeyGen avatar**: prefers the locally authenticated HeyGen CLI/OAuth path, falls back to the raw API-key flow, sends a minimal expression-marker avatar script, and preserves provider audio when present
+From the pipeline UI, each ranked Short or direct import can be processed into a stacked **9:16 reaction output**.
 
-Each processing job now also writes a `reaction-instructions.json` artifact into its job folder so provider behavior stays inspectable and can be handed to remote vendors like HeyGen.
+Current processing providers:
 
-## Where Copilot is used
+| Provider | What it does |
+| --- | --- |
+| **AI character (static)** | Reuses a local server-hosted reaction clip from `data/static/ai-character` |
+| **User media** | Records your own camera clip inline and uses it as the lower reaction layer |
+| **User media + sunglasses** | Uses the same browser recorder with a live sunglasses anonymizer |
+| **User media + pixelated** | Uses the same browser recorder with a pixelation anonymizer |
+| **HeyGen avatar** | Renders the lower reaction layer through the HeyGen CLI/OAuth path when available, with API fallback |
 
-Copilot CLI is used multiple times in a single scan:
+### Composition behavior
 
-- **before search**: create better YouTube search terms from the user query
-- **after collection**: review each candidate Short for relevance, spam, and virality
-- **after ranking**: regroup the existing semantic library so category structure can evolve with the data
-- **after persistence**: produce a markdown report for the scan iteration
+When a processing job runs, the backend:
 
-This means categories are **not fixed**. A broad bucket like `politics` can later be re-split into more useful categories such as `political party`, `political abortion`, or other topic-specific clusters when the LLM sees enough evidence in the stored record set.
+1. downloads the source Short
+2. writes a `reaction-instructions.json` artifact into the job folder
+3. asks the selected provider for a reaction-layer video
+4. composites a **9:16** output with the source on top and the reaction on the bottom
+5. starts the reaction layer immediately
+6. delays the source playback by **4 seconds**
+7. preserves available audio and mixes tracks when both sides contain audio
+8. writes job artifacts under `data/generated/jobs/`
+
+If `data/static/ai-character/end.mp4` exists, the composition also supports the optional outro flow used by the static AI-character provider.
+
+Use this surface when the goal is: **Find interesting Shorts, rank what matters, and generate reaction-ready outputs from the resulting library.**
+
+## What Copilot is responsible for
+
+This is not just a scraper with a small prompt on top. Copilot is used in the decision-heavy parts of the product:
+
+1. **Query planning** — expand a loose topic into useful search terms.
+2. **Candidate review** — decide which Shorts are relevant, spammy, or worth keeping.
+3. **Virality judgment** — add confidence, reasoning, and virality scoring.
+4. **Category recategorization** — rebuild the topic library when a broader category needs to split or be renamed.
+5. **Report writing** — generate a markdown summary for each scan iteration.
+
+The deterministic code handles collection, normalization, persistence, and video composition. Copilot handles the meaning-heavy judgment.
 
 ## Quickstart
 
 ```bash
 npm install
 cp .env.example .env
-npm run copilot:scan -- --query "indian politics" --max-results 5
 ```
 
-To scan and launch the UI:
+Optional but recommended for the browser fallback path:
+
+```bash
+npx playwright install chromium
+```
+
+Run a Copilot-driven scan and launch the UI:
 
 ```bash
 npm run copilot:scan -- --query "indian politics" --max-results 5 --serve-ui
@@ -144,95 +152,66 @@ The local server runs on `http://localhost:3000` by default.
 
 Once the server is running:
 
-- open `/` to choose a workflow
-- open `/quick-reaction` for the live reaction recorder path
-- open `/pipeline` for the Copilot-driven scan, ranking, and processing dashboard
+- open `/` to choose a product surface
+- open `/quick-reaction` to start the live **play, react, record** flow
+- open `/pipeline` to run the LLM-driven discovery and automated generation workflow
 
-Inside the pipeline UI, you enter a free-text topic, press **Scan**, and Copilot generates the YouTube search terms, reviews the resulting videos, then rebuilds the semantic category list on the fly so distinct topics can split into clearer buckets before refreshing the UI.
+If you already have dump data and only want to serve the app:
 
-Each row also includes a **Delete** button that removes that Short from the local dump files and deletes any generated job folders tied to that Short.
-If a day-specific or iteration dump becomes empty after deletion, that JSON file is removed from disk as part of the cleanup.
-The category index is updated at the same time so category navigation stays in sync.
+```bash
+npm run build
+npm run serve
+```
 
-The UI also includes a **Process from URL** panel so you can paste a YouTube Shorts, watch, or `youtu.be` link and send it directly into the same processing pipeline. Every imported URL is also tracked under a dedicated **Direct imports** category so manual ingestions do not get mixed into LLM-driven scan categories.
-
-Processing now always uses the fixed delayed-source composition:
-- the reaction layer starts first
-- the original video poster stays visible with a pause icon overlay
-- YouTube playback begins **4 seconds later**
-- the reaction clip is **not repeated**
-- when the reaction clip stops, a pause icon appears over the bottom panel
-- if `data/static/ai-character/end.mp4` exists, it starts in the bottom panel **1 second before** the main video ends; once the main video ends, the top panel freezes with the pause overlay while the outro continues
-
-## Environment variables
-
-| Variable | Purpose |
-| --- | --- |
-| `YOUTUBE_API_KEY` | Recommended primary source for rich YouTube metadata |
-| `COPILOT_CLI_BINARY` | Optional explicit path to the Copilot CLI binary |
-| `COPILOT_MODEL` | Optional model override for scripted Copilot review runs |
-| `PIPELINE_PORT` | Local server port |
-| `PIPELINE_MAX_RESULTS_PER_QUERY` | Results per LLM-generated YouTube search term |
-| `PIPELINE_REQUEST_TIMEOUT_MS` | HTTP timeout for source requests |
-| `PLAYWRIGHT_BROWSER` | Browser engine for the Playwright fallback (`chromium`, `firefox`, `webkit`) |
-| `AI_CHARACTER_ASSET_DIR` | Optional directory for server-hosted static AI character videos; defaults to `data/static/ai-character` |
-| `HEYGEN_API_KEY` | Optional fallback for the **HeyGen avatar** provider when CLI/OAuth auth is not available; still uses API credits |
-| `HEYGEN_API_URL` | Optional HeyGen API base URL override; defaults to `https://api.heygen.com` |
-| `HEYGEN_CLI_BINARY` | Optional explicit path to the `heygen` CLI binary |
-| `HEYGEN_AVATAR_ID` | Required HeyGen avatar/look ID for the **HeyGen avatar** provider |
-| `HEYGEN_VOICE_ID` | Optional voice/default-avatar fallback for the basic HeyGen avatar render path |
-| `HEYGEN_TEMPLATE_ID` | Not used by the current basic integration |
-| `HEYGEN_REACTION_VIDEO_URL` | Not used by the current basic integration |
-| `HEYGEN_OVERLAY_CHROMA_KEY_COLOR` | Not used by the current basic integration |
-| `YTDLP_BINARY` | Downloader binary used for acquiring the source Short |
-| `FFMPEG_BINARY` / `FFPROBE_BINARY` | Video tools used for analysis and compositing |
-
-## Scripts
+## Key scripts
 
 | Script | Purpose |
 | --- | --- |
 | `npm run scan -- --query "topic"` | Runs the pipeline and writes JSON dumps plus a markdown report |
-| `npm run copilot:scan -- --query "topic"` | Copilot-friendly entry workflow |
+| `npm run copilot:scan -- --query "topic"` | Copilot-oriented entry workflow |
 | `npm run copilot:scan -- --query "topic" --serve-ui` | Runs the pipeline, builds the UI, and starts the local server |
 | `npm run build` | Type-checks and builds the React UI |
 | `npm run serve` | Starts the local API/UI server |
 | `npm run test` | Runs the lightweight test suite |
+| `npm run test:ui` | Runs the browser workflow checks for the landing page and quick-reaction flow |
 
-## Output contract
+## Outputs written to disk
 
-Each ranked record includes:
+Key generated artifacts:
 
-- title
-- url
-- channel
-- publish date
-- views
-- likes
-- comments
-- score
-- score breakdown
-- capture timestamp
-- `llmReview` reasoning, confidence, and evidence summary when available from Copilot review
+- `data/dumps/latest.json` — most recent ranked result set
+- `data/dumps/categories/index.json` — semantic category index used by the UI
+- `data/dumps/categories/<category>.json` — latest up-to-20 records for a category
+- `data/dumps/categories/direct-imports.json` — manually pasted URLs kept separate from scan-driven categories
+- `data/dumps/by-day/YYYY-MM-DD.json` — day-specific dump slices
+- `data/dumps/iterations/<timestamp>.json` — archived per-scan result snapshots
+- `data/reports/<timestamp>.md` — Copilot-written scan reports
+- `data/generated/jobs/<job-id>/reaction-instructions.json` — provider-agnostic reaction brief
+- `data/generated/jobs/<job-id>/provider-render.mp4` — provider render before normalization/composition
+- `data/generated/jobs/<job-id>/reaction.mp4` — normalized reaction-layer clip
+- `data/generated/jobs/<job-id>/output.mp4` — final 9:16 reaction video
+- `data/generated/jobs/<job-id>/manifest.json` — durable job status and metadata
 
-Candidate URLs are normalized to the cleaner Shorts form:
+## Important environment variables
 
-- `https://www.youtube.com/shorts/<video-id>`
+| Variable | Purpose |
+| --- | --- |
+| `YOUTUBE_API_KEY` | Recommended primary source for richer YouTube metadata |
+| `COPILOT_CLI_BINARY` | Optional explicit path to the Copilot CLI binary |
+| `COPILOT_MODEL` | Optional model override for Copilot review runs |
+| `PIPELINE_PORT` | Local server port |
+| `PIPELINE_MAX_RESULTS_PER_QUERY` | Results collected per generated search term |
+| `PIPELINE_REQUEST_TIMEOUT_MS` | HTTP timeout for source requests |
+| `PLAYWRIGHT_BROWSER` | Browser engine for the fallback collector (`chromium`, `firefox`, `webkit`) |
+| `AI_CHARACTER_ASSET_DIR` | Optional directory for static AI-character videos |
+| `HEYGEN_API_KEY` | Optional fallback auth for the HeyGen provider |
+| `HEYGEN_API_URL` | Optional HeyGen API base URL override |
+| `HEYGEN_CLI_BINARY` | Optional explicit path to the `heygen` CLI binary |
+| `HEYGEN_AVATAR_ID` | Required avatar/look ID for the HeyGen provider |
+| `YTDLP_BINARY` | Downloader used to acquire source Shorts |
+| `FFMPEG_BINARY` / `FFPROBE_BINARY` | Video tools used for analysis and compositing |
 
-Generated reaction jobs are stored under:
-
-- `data/generated/jobs/<job-id>/source.mp4`
-- `data/generated/jobs/<job-id>/reaction.mp4`
-- `data/generated/jobs/<job-id>/output.mp4`
-- `data/generated/jobs/<job-id>/manifest.json`
-- `data/generated/jobs/<job-id>/poster.jpg`
-
-Static AI character assets are resolved from:
-
-- `data/static/ai-character/start.mp4`
-- `data/static/ai-character/end.mp4` for the optional ending segment in the fixed composition
-- or the first supported video file found in `data/static/ai-character/`
-
-Supported extensions are `.mp4`, `.mov`, `.webm`, and `.mkv`.
+See `.env.example` and `docs/operations.md` for the full operating setup.
 
 ## Project layout
 
@@ -242,16 +221,23 @@ src/
   config/       Environment and keyword configuration
   copilot/      Prompt builders, schemas, and Copilot CLI client
   pipeline/     Sources, review, scoring, writers, orchestrator
+  processing/   Provider adapters, job runner, media helpers, compositor
   server/       API and UI server
-  shared/       Types, schema, date helpers, scoring helpers
+  shared/       Shared types, schema, date helpers, scoring helpers
   ui/           React frontend
 scripts/        CLI entrypoints
-docs/           Detailed architecture and operating docs
+docs/           Architecture and operations documentation
 workflow/       Markdown workflow contracts used by the master agent
-data/dumps/     Generated JSON output
-  categories/   Parent-category index plus latest 20 records per category
+data/dumps/     Ranked JSON output and category snapshots
 data/reports/   Generated markdown scan reports
-data/generated/ Generated reaction-video job assets
+data/generated/ Reaction-video job assets
 ```
 
-See `docs/` for the detailed architecture, pipeline, scoring, operations, Copilot CLI usage, and future HeyGen integration notes.
+## More documentation
+
+- `docs/architecture.md`
+- `docs/pipeline.md`
+- `docs/operations.md`
+- `docs/scoring.md`
+- `docs/heygen-integration.md`
+- `docs/copilot-trigger.md`

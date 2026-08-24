@@ -3,14 +3,35 @@ import type { AvatarReactionProviderKind, UserMediaAnonymizerKind } from "./type
 export interface ReactionProviderOption {
   value: AvatarReactionProviderKind;
   label: string;
+  description?: string;
 }
 
 export const REACTION_PROVIDER_OPTIONS: ReactionProviderOption[] = [
-  { value: "ai-character", label: "AI character (static)" },
-  { value: "user-media", label: "User media" },
-  { value: "user-media-sunglasses", label: "User media + sunglasses" },
-  { value: "user-media-pixelated", label: "User media + pixelated" },
-  { value: "heygen-avatar", label: "HeyGen avatar" }
+  {
+    value: "ai-character",
+    label: "AI character (static)",
+    description: "Generate a provider-led reaction clip without recording yourself."
+  },
+  {
+    value: "user-media",
+    label: "User media",
+    description: "Use your camera feed as-is for the fastest record-and-react path."
+  },
+  {
+    value: "user-media-sunglasses",
+    label: "User media + sunglasses",
+    description: "Record yourself while the browser adds a face-following sunglasses mask."
+  },
+  {
+    value: "user-media-pixelated",
+    label: "User media + pixelated",
+    description: "Keep the same flow but add stronger identity masking with pixelation."
+  },
+  {
+    value: "heygen-avatar",
+    label: "HeyGen avatar",
+    description: "Send the job through the HeyGen-backed provider flow for avatar output."
+  }
 ];
 
 export function getQuickReactionProviderOptions(): ReactionProviderOption[] {
