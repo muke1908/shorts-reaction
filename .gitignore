@@ -1,0 +1,8 @@
+node_modules
+ui-dist
+data/dumps/*.json
+data/dumps/by-day/*.json
+data/dumps/iterations/*.json
+data/generated/jobs/*
+data/reports/*.md
+.env

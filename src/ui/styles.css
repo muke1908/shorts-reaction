@@ -1,0 +1,289 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, system-ui, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+}
+
+a {
+  color: #93c5fd;
+}
+
+.layout {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 20px 56px;
+}
+
+.hero {
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.panel {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.meta {
+  display: grid;
+  gap: 8px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.summary-card strong {
+  font-size: 32px;
+}
+
+.table-panel {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1160px;
+}
+
+th,
+td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  text-align: left;
+  vertical-align: top;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.chip {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.2);
+  color: #bfdbfe;
+  font-size: 12px;
+}
+
+.small-text {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.error {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+
+.process-button {
+  border: 1px solid #2563eb;
+  background: #1d4ed8;
+  color: white;
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.process-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.process-cell {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  max-width: 240px;
+}
+
+.process-column {
+  width: 240px;
+  min-width: 240px;
+}
+
+.details-column {
+  width: 320px;
+  min-width: 320px;
+}
+
+.output-column {
+  width: 220px;
+  min-width: 220px;
+}
+
+.process-details {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.process-status,
+.process-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.process-status {
+  white-space: nowrap;
+}
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.scan-button {
+  border: 1px solid #0f766e;
+  background: #0f766e;
+  color: white;
+  border-radius: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.scan-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.processing-inline {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.processing-inline__segments {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+}
+
+.processing-inline__segment {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.processing-inline__segment--active {
+  background: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.12);
+}
+
+.processing-inline__segment--done {
+  background: #22c55e;
+}
+
+.processing-inline__segment--failed {
+  background: #ef4444;
+}
+
+.processing-inline__summary {
+  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.processing-inline__summary--active {
+  color: #bfdbfe;
+}
+
+.processing-inline__summary--done {
+  color: #bbf7d0;
+}
+
+.processing-inline__summary--failed {
+  color: #fecaca;
+}
+
+.processing-error {
+  color: #fecaca;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.output-video {
+  display: grid;
+  gap: 8px;
+}
+
+.output-video--empty {
+  min-height: 180px;
+  align-content: center;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.output-video__player {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  border-radius: 12px;
+  background: #020617;
+}
+
+.output-video__link {
+  white-space: nowrap;
+}
+
+.details-title {
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+@media (max-width: 1100px) {
+  .process-column {
+    width: 220px;
+    min-width: 220px;
+  }
+
+  .process-cell {
+    max-width: 220px;
+  }
+
+  .details-column,
+  .output-column {
+    width: 220px;
+    min-width: 220px;
+  }
+
+  .processing-inline__segments {
+    gap: 3px;
+  }
+}
