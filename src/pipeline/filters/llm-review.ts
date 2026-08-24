@@ -2,7 +2,6 @@ import { loadWorkflowBundle, type WorkflowBundle } from "../../agents/workflow-l
 import { buildCandidateReviewPrompt, buildWorkflowSystemPrompt } from "../../copilot/prompts";
 import { requestJsonFromCopilot } from "../../copilot/client";
 import type { CopilotReviewBatchResponse } from "../../copilot/schemas";
-import { POLITICS_KEYWORDS } from "../../config/keywords";
 import { isSameUtcDay } from "../../shared/dates";
 import { scoreShort } from "../../shared/scoring";
 import type { LlmReview, PipelineConfig, ShortRecord, SourceItem } from "../../shared/types";
@@ -11,9 +10,18 @@ function normalize(value: string): string {
   return value.toLowerCase();
 }
 
-export function matchedKeywords(item: SourceItem): string[] {
+function matchedKeywords(item: SourceItem, relevanceTerms: string[]): string[] {
   const haystack = normalize([item.title, item.description, item.channel, item.keywordSeed].join(" "));
-  return POLITICS_KEYWORDS.filter((keyword) => haystack.includes(normalize(keyword)));
+  return relevanceTerms.filter((keyword) => haystack.includes(normalize(keyword)));
+}
+
+function buildRelevanceTerms(scanQuery: string, topicContextName: string, keywordSeeds: string[]): string[] {
+  return Array.from(new Set(
+    [scanQuery, topicContextName, ...keywordSeeds]
+      .flatMap((value) => value.split(/[,\s/#]+/))
+      .map((value) => value.trim())
+      .filter((value) => value.length >= 3)
+  ));
 }
 
 function validateCopilotReviews(
@@ -38,6 +46,9 @@ function validateCopilotReviews(
 
 export async function reviewAndRankCandidates(
   items: SourceItem[],
+  scanQuery: string,
+  topicContextName: string,
+  keywordSeeds: string[],
   config: PipelineConfig,
   workflowBundle?: WorkflowBundle
 ): Promise<{ records: ShortRecord[]; workflowFiles: string[] }> {
@@ -46,8 +57,9 @@ export async function reviewAndRankCandidates(
     : items;
 
   const workflow = workflowBundle ?? await loadWorkflowBundle(config);
+  const relevanceTerms = buildRelevanceTerms(scanQuery, topicContextName, keywordSeeds);
   const evidence = filteredByDay.map((item) => {
-    const keywords = matchedKeywords(item);
+    const keywords = matchedKeywords(item, relevanceTerms);
     const heuristicRecord = scoreShort(item, keywords, null);
     return {
       item,
@@ -60,7 +72,7 @@ export async function reviewAndRankCandidates(
   if (evidence.length > 0) {
     const response = await requestJsonFromCopilot<CopilotReviewBatchResponse>(
       buildWorkflowSystemPrompt(workflow),
-      buildCandidateReviewPrompt(evidence),
+      buildCandidateReviewPrompt(scanQuery, topicContextName, evidence),
       config,
       "candidate-review"
     );

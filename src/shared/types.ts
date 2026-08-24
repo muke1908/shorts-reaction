@@ -1,8 +1,12 @@
 export type SourceKind = "youtube-api" | "youtube-web";
-export type AvatarReactionProviderKind = "dummy" | "user-media";
+export type AvatarReactionProviderKind =
+  | "ai-character"
+  | "user-media"
+  | "heygen-avatar";
 export type ProcessingStatus =
   | "pending"
   | "downloading"
+  | "preparing-reaction"
   | "rendering-reaction"
   | "compositing"
   | "completed"
@@ -64,6 +68,9 @@ export interface RunMetadata {
   startedAt: string;
   completedAt: string;
   keywordSeeds: string[];
+  scanQuery?: string | null;
+  parentCategorySlug?: string | null;
+  parentCategoryName?: string | null;
   sourceStrategy: "hybrid";
   usedFallback: boolean;
   itemCount: number;
@@ -74,6 +81,9 @@ export interface RunMetadata {
 export interface DumpDocument {
   generatedAt: string;
   requestedDay: string | null;
+  categorySlug?: string | null;
+  categoryName?: string | null;
+  searchQuery?: string | null;
   records: ShortRecord[];
   metadata: RunMetadata;
 }
@@ -93,8 +103,10 @@ export interface PipelineConfig {
   serveUi: boolean;
   requestedDay: string | null;
   generatedDir: string;
+  aiCharacterAssetDir: string;
   heygenApiKey?: string;
   heygenApiUrl?: string;
+  heygenCliBinary?: string;
   heygenTemplateId?: string;
   heygenAvatarId?: string;
   heygenVoiceId?: string;
@@ -130,6 +142,21 @@ export interface PipelineResult {
   iterationFile: string;
   reportFile: string;
   dump: DumpDocument;
+}
+
+export interface CategorySummary {
+  slug: string;
+  name: string;
+  latestQuery: string;
+  latestScanAt: string;
+  recordCount: number;
+  scanCount: number;
+  queries: string[];
+}
+
+export interface CategoryIndexDocument {
+  generatedAt: string;
+  categories: CategorySummary[];
 }
 
 export interface CopilotUsageTotals {
@@ -169,13 +196,49 @@ export interface CopilotRuntimeStatus {
   error: string | null;
 }
 
+export interface ServerRuntimeStatus {
+  pid: number;
+  sampledAt: string;
+  uptimeSeconds: number;
+  cpuPercent: number;
+  cpuCoreCount: number;
+  rssBytes: number;
+  heapUsedBytes: number;
+  heapTotalBytes: number;
+  externalBytes: number;
+  arrayBuffersBytes: number;
+  loadAverage: [number, number, number];
+  nodeVersion: string;
+  platform: NodeJS.Platform;
+}
+
+export interface DeleteShortResponse {
+  deletedShortId: string;
+  updatedDumpFiles: number;
+  deletedDumpFiles: number;
+  deletedJobDirectories: number;
+}
+
 export interface ProcessShortRequest {
   day?: string;
+  categorySlug?: string | null;
+  sourceUrl?: string;
   reactionProvider?: AvatarReactionProviderKind;
   userMedia?: {
     mimeType: string;
     base64: string;
   } | null;
+}
+
+export interface ReactionInstructions {
+  sourceTitle: string;
+  sourceChannel: string;
+  sourceDurationSeconds: number | null;
+  providerKind: AvatarReactionProviderKind;
+  speechMode: "silent" | "preserve-user" | "mix-when-available";
+  reactionSummary: string;
+  expressionDirection: string;
+  timingGuidance: string[];
 }
 
 export interface ReactionJobRecord {
@@ -190,6 +253,8 @@ export interface ReactionJobRecord {
   status: ProcessingStatus;
   sourceVideoPath: string | null;
   providerInputVideoPath: string | null;
+  reactionInstructionsPath: string | null;
+  providerRenderJobId: string | null;
   reactionVideoPath: string | null;
   outputVideoPath: string | null;
   posterPath: string | null;
@@ -198,4 +263,38 @@ export interface ReactionJobRecord {
   createdAt: string;
   updatedAt: string;
   error: string | null;
+}
+
+export interface ScanRequest {
+  query: string;
+}
+
+export interface ScanSearchPlan {
+  intent: string;
+  searchQueries: string[];
+}
+
+export interface ScanCategoryDecision {
+  parentCategoryName: string;
+  reason: string;
+}
+
+export interface ExistingCategoryRecord {
+  record: ShortRecord;
+  categorySlug: string;
+  categoryName: string;
+}
+
+export interface RecategorizedCategory {
+  slug: string;
+  name: string;
+  reason: string;
+  records: ShortRecord[];
+  touchedByCurrentScan: boolean;
+}
+
+export interface RecategorizationResult {
+  categories: RecategorizedCategory[];
+  primaryCategorySlug: string | null;
+  primaryCategoryName: string | null;
 }

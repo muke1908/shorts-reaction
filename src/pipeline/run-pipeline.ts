@@ -1,9 +1,11 @@
-import type { WorkflowBundle } from "../agents/workflow-loader";
+import { loadWorkflowBundle, type WorkflowBundle } from "../agents/workflow-loader";
 import { reviewAndRankCandidates } from "./filters/llm-review";
+import { generateSearchPlan, recategorizeLibrary } from "./scan-intelligence";
 import { searchWithYoutubeApi } from "./sources/youtube-api";
 import { searchManyWithYoutubePlaywright } from "./sources/youtube-playwright";
 import { writeDumps } from "./writers/write-dumps";
 import type { PipelineConfig, PipelineResult, SourceItem } from "../shared/types";
+import { loadSemanticCategoryRecords } from "../server/category-store";
 
 function dedupe(items: SourceItem[]): SourceItem[] {
   const map = new Map<string, SourceItem>();
@@ -17,12 +19,15 @@ function dedupe(items: SourceItem[]): SourceItem[] {
   return [...map.values()];
 }
 
-export async function collectCandidateShorts(config: PipelineConfig): Promise<{ items: SourceItem[]; usedFallback: boolean }> {
+export async function collectCandidateShorts(
+  config: PipelineConfig,
+  keywordSeeds: string[]
+): Promise<{ items: SourceItem[]; usedFallback: boolean }> {
   const items: SourceItem[] = [];
   let usedFallback = false;
   const fallbackSeeds: string[] = [];
 
-  for (const keywordSeed of config.keywordSeeds) {
+  for (const keywordSeed of keywordSeeds) {
     const apiItems = await searchWithYoutubeApi(config, keywordSeed);
     if (apiItems.length > 0) {
       items.push(...apiItems);
@@ -43,11 +48,24 @@ export async function collectCandidateShorts(config: PipelineConfig): Promise<{ 
   };
 }
 
-export async function runPipeline(config: PipelineConfig, workflowBundle?: WorkflowBundle): Promise<PipelineResult> {
+export async function runPipeline(
+  config: PipelineConfig,
+  scanQuery: string,
+  workflowBundle?: WorkflowBundle
+): Promise<PipelineResult> {
   const startedAt = new Date().toISOString();
-  const { items, usedFallback } = await collectCandidateShorts(config);
-  const reviewed = await reviewAndRankCandidates(items, config, workflowBundle);
-  const rankedRecords = reviewed.records.slice(0, 10);
+  const resolvedWorkflow = workflowBundle ?? await loadWorkflowBundle(config);
+  const searchPlan = await generateSearchPlan(scanQuery, config, resolvedWorkflow);
+  const { items, usedFallback } = await collectCandidateShorts(config, searchPlan.searchQueries);
+  const reviewed = await reviewAndRankCandidates(
+    items,
+    scanQuery,
+    searchPlan.intent,
+    searchPlan.searchQueries,
+    config,
+    resolvedWorkflow
+  );
+  const rankedRecords = reviewed.records.slice(0, 20);
 
   if (rankedRecords.length === 0) {
     throw new Error(
@@ -55,16 +73,29 @@ export async function runPipeline(config: PipelineConfig, workflowBundle?: Workf
     );
   }
 
+  const existingRecords = await loadSemanticCategoryRecords(config.outputDir);
+  const recategorization = await recategorizeLibrary(
+    scanQuery,
+    existingRecords,
+    rankedRecords,
+    config,
+    resolvedWorkflow
+  );
+
   return writeDumps(
     rankedRecords,
     {
       startedAt,
       completedAt: new Date().toISOString(),
-      keywordSeeds: config.keywordSeeds,
+      keywordSeeds: searchPlan.searchQueries,
+      scanQuery,
+      parentCategorySlug: recategorization.primaryCategorySlug,
+      parentCategoryName: recategorization.primaryCategoryName,
       usedFallback,
       sourceStrategy: "hybrid",
       workflowFiles: reviewed.workflowFiles
     },
-    config
+    config,
+    recategorization
   );
 }

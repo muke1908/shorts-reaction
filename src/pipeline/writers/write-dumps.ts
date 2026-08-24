@@ -2,7 +2,15 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { assertDumpDocument } from "../../shared/schema";
 import { toDayBucket } from "../../shared/dates";
-import type { DumpDocument, PipelineConfig, PipelineResult, RunMetadata, ShortRecord } from "../../shared/types";
+import type {
+  DumpDocument,
+  PipelineConfig,
+  PipelineResult,
+  RecategorizationResult,
+  RunMetadata,
+  ShortRecord
+} from "../../shared/types";
+import { rewriteSemanticCategoryDumps } from "../../server/category-store";
 
 async function writeJson(path: string, value: unknown): Promise<void> {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
@@ -11,16 +19,22 @@ async function writeJson(path: string, value: unknown): Promise<void> {
 export async function writeDumps(
   records: ShortRecord[],
   metadata: Omit<RunMetadata, "outputFiles" | "itemCount">,
-  config: PipelineConfig
+  config: PipelineConfig,
+  recategorization: RecategorizationResult
 ): Promise<PipelineResult> {
   await mkdir(config.outputDir, { recursive: true });
   await mkdir(config.byDayDir, { recursive: true });
   const iterationsDir = resolve(config.outputDir, "iterations");
   await mkdir(iterationsDir, { recursive: true });
 
+  const categorySlug = recategorization.primaryCategorySlug;
+  const categoryName = recategorization.primaryCategoryName;
   const baseDocument: Omit<DumpDocument, "metadata"> = {
     generatedAt: metadata.completedAt,
     requestedDay: config.requestedDay,
+    categorySlug,
+    categoryName,
+    searchQuery: metadata.scanQuery ?? null,
     records
   };
 
@@ -40,6 +54,11 @@ export async function writeDumps(
     outputFiles: [],
     sourceStrategy: "hybrid"
   };
+
+  const categoryRewrite = await rewriteSemanticCategoryDumps(config.outputDir, recategorization.categories, {
+    generatedAt: metadata.completedAt,
+    latestQuery: metadata.scanQuery ?? ""
+  });
 
   const latestDocument = assertDumpDocument({
     ...baseDocument,
@@ -62,7 +81,13 @@ export async function writeDumps(
     );
   }
 
-  metadataWithOutputs.outputFiles = [latestFile, iterationFile, ...byDayFiles];
+  metadataWithOutputs.outputFiles = [
+    latestFile,
+    iterationFile,
+    ...categoryRewrite.categoryDumpPaths,
+    categoryRewrite.categoryIndexPath,
+    ...byDayFiles
+  ];
   await writeJson(latestFile, assertDumpDocument({ ...baseDocument, metadata: metadataWithOutputs }));
   await writeJson(iterationFile, assertDumpDocument({ ...baseDocument, metadata: metadataWithOutputs }));
 

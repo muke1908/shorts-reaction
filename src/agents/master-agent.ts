@@ -12,14 +12,16 @@ async function persistUpdatedDump(result: PipelineResult): Promise<void> {
   await writeFile(result.iterationFile, content, "utf8");
 }
 
-export async function runMasterAgent(config: PipelineConfig): Promise<PipelineResult> {
+export async function runMasterAgent(config: PipelineConfig, scanQuery: string): Promise<PipelineResult> {
   const workflow = await loadWorkflowBundle(config);
-  const result = await runPipeline(config, workflow);
+  const result = await runPipeline(config, scanQuery, workflow);
 
   const reportMarkdown = await requestTextFromCopilot(
     buildWorkflowSystemPrompt(workflow),
     buildScanReportPrompt(
       workflow,
+      scanQuery,
+      result.dump.categoryName ?? "Uncategorized",
       result.dump.records.map((record) => ({
         id: record.id,
         title: record.title,

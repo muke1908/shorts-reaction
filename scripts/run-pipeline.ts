@@ -9,12 +9,16 @@ function readArg(name: string): string | undefined {
 async function main(): Promise<void> {
   const requestedDay = readArg("--day") ?? null;
   const maxResults = readArg("--max-results");
+  const scanQuery = readArg("--query");
+  if (!scanQuery) {
+    throw new Error("Provide a scan query with --query.");
+  }
   const config = loadConfig({
     requestedDay,
     maxResultsPerQuery: maxResults ? Number(maxResults) : undefined
   });
 
-  const result = await runMasterAgent(config);
+  const result = await runMasterAgent(config, scanQuery);
   console.log(`Wrote latest dump to ${result.latestFile}`);
   console.log(`Wrote markdown report to ${result.reportFile}`);
   console.log(`Generated ${result.byDayFiles.length} day-bucketed dump files.`);

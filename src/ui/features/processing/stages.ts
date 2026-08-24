@@ -1,7 +1,7 @@
 import type { GeneratedVideoSummary, ProcessingStatus } from "../../../shared/types";
 
 export interface ProcessingStage {
-  key: "pending" | "downloading" | "rendering-reaction" | "compositing" | "completed";
+  key: "pending" | "downloading" | "preparing-reaction" | "rendering-reaction" | "compositing" | "completed";
   label: string;
   description: string;
 }
@@ -24,9 +24,14 @@ export const PROCESSING_STAGES: ProcessingStage[] = [
     description: "The selected YouTube Short is being downloaded."
   },
   {
+    key: "preparing-reaction",
+    label: "Preparing reaction brief",
+    description: "The pipeline is generating provider-agnostic reaction instructions for the selected provider."
+  },
+  {
     key: "rendering-reaction",
     label: "Rendering reaction layer",
-    description: "The Avatar Reaction Provider is generating a dummy reaction video for the lower panel."
+    description: "The selected reaction provider is generating the lower-panel reaction video."
   },
   {
     key: "compositing",
@@ -45,7 +50,7 @@ function stageIndex(status: ProcessingStatus): number {
 }
 
 export function isActiveProcessingStatus(status: ProcessingStatus): boolean {
-  return status === "pending" || status === "downloading" || status === "rendering-reaction" || status === "compositing";
+  return status === "pending" || status === "downloading" || status === "preparing-reaction" || status === "rendering-reaction" || status === "compositing";
 }
 
 export function statusLabel(status: ProcessingStatus): string {
@@ -54,6 +59,8 @@ export function statusLabel(status: ProcessingStatus): string {
       return "Queued";
     case "downloading":
       return "Downloading source";
+    case "preparing-reaction":
+      return "Preparing reaction brief";
     case "rendering-reaction":
       return "Rendering reaction layer";
     case "compositing":

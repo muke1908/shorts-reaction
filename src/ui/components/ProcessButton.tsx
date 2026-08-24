@@ -1,5 +1,10 @@
-import { useState } from "react";
-import type { AvatarReactionProviderKind, GeneratedVideoSummary, ProcessShortRequest, ShortRecord } from "../../shared/types";
+import { memo, useState } from "react";
+import type {
+  AvatarReactionProviderKind,
+  GeneratedVideoSummary,
+  ProcessShortRequest,
+  ShortRecord
+} from "../../shared/types";
 import { InlineProcessingStageBar } from "../features/processing/InlineProcessingStageBar";
 import { isActiveProcessingStatus, statusLabel } from "../features/processing/stages";
 import { UserMediaRecorder, type RecordedUserMedia } from "./UserMediaRecorder";
@@ -10,9 +15,9 @@ interface ProcessButtonProps {
   onProcess: (record: ShortRecord, request: ProcessShortRequest) => Promise<void>;
 }
 
-export function ProcessButton({ record, summary, onProcess }: ProcessButtonProps): JSX.Element {
+export const ProcessButton = memo(function ProcessButton({ record, summary, onProcess }: ProcessButtonProps): JSX.Element {
   const running = summary ? isActiveProcessingStatus(summary.status) : false;
-  const [provider, setProvider] = useState<AvatarReactionProviderKind>("dummy");
+  const [provider, setProvider] = useState<AvatarReactionProviderKind>("ai-character");
   const [recorderOpen, setRecorderOpen] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -35,8 +40,9 @@ export function ProcessButton({ record, summary, onProcess }: ProcessButtonProps
           setRecorderOpen(false);
           setLocalError(null);
         }}>
-          <option value="dummy">Dummy</option>
+          <option value="ai-character">AI character (static)</option>
           <option value="user-media">User media</option>
+          <option value="heygen-avatar">HeyGen avatar</option>
         </select>
       </label>
       <button className="process-button" disabled={running || recorderOpen} onClick={() => {
@@ -45,7 +51,9 @@ export function ProcessButton({ record, summary, onProcess }: ProcessButtonProps
           return;
         }
 
-        startPipeline({ reactionProvider: provider }).catch(() => undefined);
+        startPipeline({
+          reactionProvider: provider
+        }).catch(() => undefined);
       }}>
         {running ? "Processing..." : "Process"}
       </button>
@@ -60,7 +68,7 @@ export function ProcessButton({ record, summary, onProcess }: ProcessButtonProps
         onRecorded={(media: RecordedUserMedia) => {
           setRecorderOpen(false);
           startPipeline({
-            reactionProvider: "user-media",
+            reactionProvider: provider,
             userMedia: {
               mimeType: media.mimeType,
               base64: media.base64
@@ -78,4 +86,4 @@ export function ProcessButton({ record, summary, onProcess }: ProcessButtonProps
       {localError ? <div className="process-meta processing-error small-text">{localError}</div> : null}
     </div>
   );
-}
+});

@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { DumpDocument, ShortRecord } from "../shared/types";
+import type { CategoryIndexDocument, DumpDocument, ShortRecord } from "../shared/types";
+import { loadCategoryDump, loadCategoryIndex } from "./category-store";
 
 async function readJson(path: string): Promise<DumpDocument> {
   const raw = await readFile(path, "utf8");
@@ -15,6 +16,14 @@ export async function loadDumpByDay(outputDir: string, day: string): Promise<Dum
   return readJson(resolve(outputDir, "by-day", `${day}.json`));
 }
 
+export async function loadDumpByCategory(outputDir: string, categorySlug: string): Promise<DumpDocument> {
+  return loadCategoryDump(outputDir, categorySlug);
+}
+
+export async function loadCategories(outputDir: string): Promise<CategoryIndexDocument> {
+  return loadCategoryIndex(outputDir);
+}
+
 export async function listAvailableDays(outputDir: string): Promise<string[]> {
   const directory = resolve(outputDir, "by-day");
   const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
@@ -25,7 +34,16 @@ export async function listAvailableDays(outputDir: string): Promise<string[]> {
     .sort((left, right) => right.localeCompare(left));
 }
 
-export async function findShortRecord(outputDir: string, shortId: string, day?: string): Promise<ShortRecord | null> {
-  const dump = day ? await loadDumpByDay(outputDir, day) : await loadLatestDump(outputDir);
+export async function findShortRecord(
+  outputDir: string,
+  shortId: string,
+  day?: string,
+  categorySlug?: string | null
+): Promise<ShortRecord | null> {
+  const dump = day
+    ? await loadDumpByDay(outputDir, day)
+    : categorySlug
+      ? await loadDumpByCategory(outputDir, categorySlug)
+      : await loadLatestDump(outputDir);
   return dump.records.find((record) => record.id === shortId) ?? null;
 }

@@ -60,6 +60,136 @@ a {
   font-size: 32px;
 }
 
+.runtime-monitor {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.96)),
+    linear-gradient(90deg, rgba(34, 197, 94, 0.08), rgba(14, 165, 233, 0.06));
+}
+
+.runtime-monitor::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+
+.runtime-monitor__header,
+.runtime-monitor__stats,
+.runtime-monitor__charts,
+.runtime-monitor__details {
+  position: relative;
+  z-index: 1;
+}
+
+.runtime-monitor__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.runtime-monitor__title {
+  margin: 4px 0 0;
+  font-size: 20px;
+}
+
+.runtime-monitor__status-pill {
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  color: #86efac;
+  background: rgba(20, 83, 45, 0.42);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+
+.runtime-monitor__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.runtime-monitor__stat,
+.runtime-monitor__chart {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.62);
+  border-radius: 12px;
+  padding: 10px;
+  backdrop-filter: blur(6px);
+}
+
+.runtime-monitor__stat-label {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.runtime-monitor__charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.runtime-monitor__chart-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.runtime-monitor__sparkline {
+  width: 100%;
+  height: 64px;
+  display: block;
+}
+
+.runtime-monitor__sparkline-grid {
+  fill: none;
+  stroke: rgba(148, 163, 184, 0.18);
+  stroke-width: 1;
+}
+
+.runtime-monitor__sparkline-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.runtime-monitor__sparkline-line--cpu {
+  stroke: #38bdf8;
+}
+
+.runtime-monitor__sparkline-line--rss {
+  stroke: #a78bfa;
+}
+
+.runtime-monitor__sparkline-line--heap {
+  stroke: #22c55e;
+}
+
+.runtime-monitor__sparkline-line--load {
+  stroke: #f59e0b;
+}
+
+.runtime-monitor__details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 16px;
+}
+
 .table-panel {
   overflow-x: auto;
 }
@@ -121,12 +251,12 @@ td {
   min-width: 0;
   display: grid;
   gap: 8px;
-  max-width: 240px;
+  max-width: 280px;
 }
 
 .process-column {
-  width: 240px;
-  min-width: 240px;
+  width: 280px;
+  min-width: 280px;
 }
 
 .details-column {
@@ -163,6 +293,339 @@ td {
   gap: 16px;
 }
 
+.action-bar__summary {
+  display: grid;
+  gap: 4px;
+}
+
+.scan-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.scan-input {
+  width: min(520px, 100%);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(30, 41, 59, 0.92);
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.category-strip {
+  margin: 0 0 12px;
+}
+
+.category-strip__rail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 0 4px;
+  scrollbar-width: thin;
+}
+
+.category-bookmark {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.96));
+  color: #cbd5e1;
+  border-radius: 10px 10px 4px 4px;
+  padding: 7px 12px 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.category-bookmark::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.45);
+}
+
+.category-bookmark--active {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: linear-gradient(180deg, rgba(8, 47, 73, 0.98), rgba(15, 23, 42, 0.98));
+  color: #e0f2fe;
+  box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.22) inset, 0 6px 18px rgba(2, 132, 199, 0.14);
+}
+
+.category-bookmark--active::before {
+  background: linear-gradient(180deg, #38bdf8, #22d3ee);
+}
+
+.category-bookmark__title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.category-bookmark__meta {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.copilot-monitor {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.18), transparent 38%),
+    radial-gradient(circle at top right, rgba(34, 211, 238, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.98));
+}
+
+.copilot-monitor::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+.copilot-monitor__header,
+.copilot-monitor__body,
+.copilot-monitor__metrics,
+.copilot-monitor__error {
+  position: relative;
+  z-index: 1;
+}
+
+.copilot-monitor__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.copilot-monitor__title {
+  margin: 2px 0 0;
+  font-size: 18px;
+}
+
+.copilot-monitor__status-pill {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  color: #cbd5e1;
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.copilot-monitor__status-pill--active {
+  color: #a5f3fc;
+  border-color: rgba(34, 211, 238, 0.48);
+  background: rgba(8, 145, 178, 0.24);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.16);
+}
+
+.copilot-monitor__body {
+  display: grid;
+  grid-template-columns: 156px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.copilot-monitor__brain {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+}
+
+.copilot-monitor__brain-core,
+.copilot-monitor__brain-ring,
+.copilot-monitor__brain-pulse,
+.copilot-monitor__brain-grid {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+}
+
+.copilot-monitor__brain-core {
+  inset: 34px;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.8), rgba(14, 165, 233, 0.3));
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.22);
+}
+
+.copilot-monitor__brain-core--active {
+  animation: brainCorePulse 1.8s ease-in-out infinite;
+}
+
+.copilot-monitor__brain-label {
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: #e0f2fe;
+  font-size: 12px;
+}
+
+.copilot-monitor__brain-ring {
+  border: 1px solid rgba(56, 189, 248, 0.18);
+}
+
+.copilot-monitor__brain-ring--outer {
+  inset: 5px;
+}
+
+.copilot-monitor__brain-ring--mid {
+  inset: 18px;
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.copilot-monitor__brain-ring--inner {
+  inset: 28px;
+  border-color: rgba(34, 211, 238, 0.25);
+}
+
+.copilot-monitor__brain-core--active ~ .copilot-monitor__brain-ring--outer {
+  animation: spinSlow 14s linear infinite;
+}
+
+.copilot-monitor__brain-core--active ~ .copilot-monitor__brain-ring--mid {
+  animation: spinReverse 10s linear infinite;
+}
+
+.copilot-monitor__brain-core--active ~ .copilot-monitor__brain-ring--inner {
+  animation: spinSlow 7s linear infinite;
+}
+
+.copilot-monitor__brain-pulse {
+  border: 1px solid rgba(34, 211, 238, 0.24);
+  opacity: 0;
+}
+
+.copilot-monitor__brain-pulse--one {
+  animation: brainWave 2.4s ease-out infinite;
+}
+
+.copilot-monitor__brain-pulse--two {
+  animation: brainWave 2.4s ease-out 1.2s infinite;
+}
+
+.copilot-monitor__brain-grid {
+  inset: 14px;
+  background:
+    radial-gradient(circle at 30% 35%, rgba(34, 211, 238, 0.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 65% 25%, rgba(129, 140, 248, 0.85) 0 2px, transparent 3px),
+    radial-gradient(circle at 72% 62%, rgba(56, 189, 248, 0.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 38% 72%, rgba(34, 197, 94, 0.8) 0 2px, transparent 3px);
+  mask: radial-gradient(circle, transparent 20%, black 21%);
+}
+
+.copilot-monitor__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.copilot-monitor__stat {
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(15, 23, 42, 0.58);
+  border-radius: 12px;
+  padding: 8px 9px;
+}
+
+.copilot-monitor__stat-label {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+  color: #94a3b8;
+  margin-bottom: 3px;
+}
+
+.copilot-monitor__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 4px 10px;
+  font-size: 12px;
+}
+
+.copilot-monitor__error {
+  margin-top: 8px;
+  color: #fecaca;
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spinReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes brainCorePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(59, 130, 246, 0.22); }
+  50% { transform: scale(1.06); box-shadow: 0 0 28px rgba(34, 211, 238, 0.28); }
+}
+
+@keyframes brainWave {
+  0% { opacity: 0.5; transform: scale(0.52); }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+
+.direct-url-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.direct-url-panel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.direct-url-panel__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(180px, 220px) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.direct-url-panel__field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.direct-url-panel__input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(30, 41, 59, 0.92);
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.direct-url-panel__result {
+  display: grid;
+  gap: 10px;
+  max-width: 260px;
+}
+
 .scan-button {
   border: 1px solid #0f766e;
   background: #0f766e;
@@ -190,6 +653,20 @@ td {
 .secondary-button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.danger-button {
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  background: rgba(127, 29, 29, 0.92);
+  color: #fee2e2;
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.details-actions {
+  margin-top: 10px;
 }
 
 .process-provider {
@@ -306,13 +783,36 @@ td {
 }
 
 @media (max-width: 1100px) {
+  .action-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .scan-controls {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .scan-input {
+    width: 100%;
+  }
+
+  .copilot-monitor__body {
+    grid-template-columns: 1fr;
+  }
+
+  .direct-url-panel__controls {
+    grid-template-columns: 1fr;
+  }
+
   .process-column {
-    width: 220px;
-    min-width: 220px;
+    width: 260px;
+    min-width: 260px;
   }
 
   .process-cell {
-    max-width: 220px;
+    max-width: 260px;
   }
 
   .details-column,

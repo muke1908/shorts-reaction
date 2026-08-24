@@ -8,6 +8,7 @@ export interface CopilotWorkflowOptions {
   requestedDay: string | null;
   serveUi: boolean;
   maxResultsPerQuery?: number;
+  scanQuery: string;
 }
 
 function runCommand(command: string, args: string[]): Promise<void> {
@@ -32,13 +33,17 @@ function printSummary(result: PipelineResult): void {
 }
 
 export async function runCopilotWorkflow(options: CopilotWorkflowOptions): Promise<void> {
+  if (!options.scanQuery.trim()) {
+    throw new Error("Provide a scan query with --query.");
+  }
+
   const config: PipelineConfig = loadConfig({
     requestedDay: options.requestedDay,
     serveUi: options.serveUi,
     maxResultsPerQuery: options.maxResultsPerQuery ?? loadConfig().maxResultsPerQuery
   });
 
-  const result = await runMasterAgent(config);
+  const result = await runMasterAgent(config, options.scanQuery.trim());
   printSummary(result);
 
   if (!options.serveUi) {

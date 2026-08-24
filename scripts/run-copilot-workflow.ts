@@ -13,7 +13,8 @@ async function main(): Promise<void> {
   await runCopilotWorkflow({
     requestedDay: readArg("--day") ?? null,
     serveUi: hasFlag("--serve-ui"),
-    maxResultsPerQuery: readArg("--max-results") ? Number(readArg("--max-results")) : undefined
+    maxResultsPerQuery: readArg("--max-results") ? Number(readArg("--max-results")) : undefined,
+    scanQuery: readArg("--query") ?? ""
   });
 }
 

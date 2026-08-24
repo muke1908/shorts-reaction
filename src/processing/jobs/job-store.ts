@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { resolve } from "node:path";
 import type { PipelineConfig, ReactionJobRecord, ShortRecord } from "../../shared/types";
@@ -10,6 +10,19 @@ function now(): string {
 
 function createJobId(): string {
   return `job-${Date.now()}-${randomBytes(4).toString("hex")}`;
+}
+
+async function pathExists(path: string | null): Promise<boolean> {
+  if (!path) {
+    return false;
+  }
+
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function writeManifest(job: ReactionJobRecord): Promise<void> {
@@ -45,6 +58,8 @@ export async function createReactionJob(
     status: "pending",
     sourceVideoPath: null,
     providerInputVideoPath: null,
+    reactionInstructionsPath: null,
+    providerRenderJobId: null,
     reactionVideoPath: null,
     outputVideoPath: null,
     posterPath: null,
@@ -109,4 +124,32 @@ export async function findLatestJobForShort(
   }
 
   return jobs.sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0] ?? null;
+}
+
+export async function findReusableSourceVideoPathForShort(
+  shortId: string,
+  config: PipelineConfig
+): Promise<string | null> {
+  const root = getJobsRoot(config);
+  const entries = await readdir(root, { withFileTypes: true }).catch(() => []);
+  const jobs: ReactionJobRecord[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const manifestPath = resolve(root, entry.name, "manifest.json");
+    try {
+      const raw = await readFile(manifestPath, "utf8");
+      const job = JSON.parse(raw) as ReactionJobRecord;
+      if (job.shortId === shortId && (await pathExists(job.sourceVideoPath))) {
+        jobs.push(job);
+      }
+    } catch {
+      // Ignore broken manifests so one bad job does not hide others.
+    }
+  }
+
+  return jobs.sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0]?.sourceVideoPath ?? null;
 }

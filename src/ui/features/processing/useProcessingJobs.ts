@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   GeneratedVideoSummary,
   ProcessShortRequest,
@@ -28,7 +28,7 @@ export function useProcessingJobs(
 ): UseProcessingJobsResult {
   const [processingByShortId, setProcessingByShortId] = useState<Record<string, GeneratedVideoSummary | null>>({});
 
-  async function refreshSummaries(nextRecords: ShortRecord[]): Promise<void> {
+  const refreshSummaries = useCallback(async (nextRecords: ShortRecord[]): Promise<void> => {
     if (nextRecords.length === 0) {
       setProcessingByShortId({});
       return;
@@ -42,7 +42,7 @@ export function useProcessingJobs(
     );
 
     setProcessingByShortId(Object.fromEntries(entries.map((entry) => [entry.shortId, entry.summary])));
-  }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,13 +56,15 @@ export function useProcessingJobs(
     return () => {
       cancelled = true;
     };
-  }, [records, onError]);
+  }, [records, onError, refreshSummaries]);
+
+  const activeShortIds = useMemo(() => Object.entries(processingByShortId)
+      .filter(([, summary]) => summary && isActiveProcessingStatus(summary.status))
+      .map(([shortId]) => shortId)
+  , [processingByShortId]);
+  const activeShortIdsKey = useMemo(() => [...activeShortIds].sort().join("|"), [activeShortIds]);
 
   useEffect(() => {
-    const activeShortIds = Object.entries(processingByShortId)
-      .filter(([, summary]) => summary && isActiveProcessingStatus(summary.status))
-      .map(([shortId]) => shortId);
-
     if (activeShortIds.length === 0) {
       return;
     }
@@ -86,9 +88,9 @@ export function useProcessingJobs(
     }, 1500);
 
     return () => window.clearInterval(timer);
-  }, [processingByShortId, onError]);
+  }, [activeShortIds, activeShortIdsKey, onError]);
 
-  async function startProcessing(record: ShortRecord, request: ProcessShortRequest): Promise<void> {
+  const startProcessing = useCallback(async (record: ShortRecord, request: ProcessShortRequest): Promise<void> => {
     const job = await fetchJson<ReactionJobRecord>(`/api/process/${record.id}`, {
       method: "POST",
       headers: {
@@ -108,7 +110,7 @@ export function useProcessingJobs(
         error: job.error
       }
     }));
-  }
+  }, []);
 
   return {
     processingByShortId,

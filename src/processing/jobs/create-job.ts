@@ -36,16 +36,21 @@ export async function startReactionJob(
   if (
     existing &&
     existing.reactionProvider === options.reactionProvider &&
-    options.reactionProvider === "dummy" &&
-    ["pending", "downloading", "rendering-reaction", "compositing"].includes(existing.status)
+    options.reactionProvider === "ai-character" &&
+    ["pending", "downloading", "preparing-reaction", "rendering-reaction", "compositing"].includes(existing.status)
   ) {
     return existing;
   }
 
-  const job = await createReactionJob(short, requestedDay, options.reactionProvider, config);
+  const job = await createReactionJob(
+    short,
+    requestedDay,
+    options.reactionProvider,
+    config
+  );
   if (options.reactionProvider === "user-media") {
     if (!options.userMedia?.base64 || !options.userMedia.mimeType.startsWith("video/")) {
-      throw new Error("UserMediaProvider requires a recorded video capture.");
+      throw new Error("This provider requires a recorded video capture.");
     }
 
     const paths = getJobPaths(job.id, config);

@@ -1,6 +1,39 @@
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { DEFAULT_KEYWORD_SEEDS } from "./keywords";
 import type { PipelineConfig } from "../shared/types";
+
+function loadDotEnvFile(): void {
+  const envPath = resolve(process.cwd(), ".env");
+  if (!existsSync(envPath)) {
+    return;
+  }
+
+  const content = readFileSync(envPath, "utf8");
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    const normalized = line.startsWith("export ") ? line.slice(7).trim() : line;
+    const separatorIndex = normalized.indexOf("=");
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const key = normalized.slice(0, separatorIndex).trim();
+    if (!key || process.env[key] !== undefined) {
+      continue;
+    }
+
+    const rawValue = normalized.slice(separatorIndex + 1).trim();
+    const quoted = rawValue.match(/^(['"])(.*)\1$/);
+    process.env[key] = quoted ? quoted[2] : rawValue;
+  }
+}
+
+loadDotEnvFile();
 
 function readNumber(name: string, fallback: number): number {
   const value = process.env[name];
@@ -22,6 +55,9 @@ export function loadConfig(overrides: Partial<PipelineConfig> = {}): PipelineCon
   const generatedDir = process.env.GENERATED_ASSETS_DIR
     ? resolve(process.cwd(), process.env.GENERATED_ASSETS_DIR)
     : resolve(process.cwd(), "data/generated");
+  const aiCharacterAssetDir = process.env.AI_CHARACTER_ASSET_DIR
+    ? resolve(process.cwd(), process.env.AI_CHARACTER_ASSET_DIR)
+    : resolve(process.cwd(), "data/static/ai-character");
   const reportsDir = resolve(process.cwd(), "data/reports");
   const workflowDir = resolve(process.cwd(), "workflow");
 
@@ -43,8 +79,10 @@ export function loadConfig(overrides: Partial<PipelineConfig> = {}): PipelineCon
     serveUi: false,
     requestedDay: null,
     generatedDir,
+    aiCharacterAssetDir,
     heygenApiKey: process.env.HEYGEN_API_KEY,
-    heygenApiUrl: process.env.HEYGEN_API_URL,
+    heygenApiUrl: process.env.HEYGEN_API_URL ?? "https://api.heygen.com",
+    heygenCliBinary: process.env.HEYGEN_CLI_BINARY,
     heygenTemplateId: process.env.HEYGEN_TEMPLATE_ID,
     heygenAvatarId: process.env.HEYGEN_AVATAR_ID,
     heygenVoiceId: process.env.HEYGEN_VOICE_ID,

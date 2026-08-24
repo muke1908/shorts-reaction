@@ -7,3 +7,21 @@ export interface CopilotReviewBatchResponse {
     }
   >;
 }
+
+export interface CopilotSearchPlanResponse {
+  intent: string;
+  searchQueries: string[];
+}
+
+export interface CopilotCategoryDecisionResponse {
+  parentCategoryName: string;
+  reason: string;
+}
+
+export interface CopilotCategoryRegroupResponse {
+  categories: Array<{
+    name: string;
+    reason: string;
+    ids: string[];
+  }>;
+}

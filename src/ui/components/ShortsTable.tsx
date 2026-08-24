@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { GeneratedVideoSummary, ProcessShortRequest, ShortRecord } from "../../shared/types";
 import { formatDate, formatNumber } from "../lib/format";
 import { OutputVideoCell } from "./OutputVideoCell";
@@ -7,9 +8,15 @@ interface ShortsTableProps {
   records: ShortRecord[];
   processingByShortId: Record<string, GeneratedVideoSummary | null>;
   onProcess: (record: ShortRecord, request: ProcessShortRequest) => Promise<void>;
+  onDelete: (record: ShortRecord) => Promise<void>;
 }
 
-export function ShortsTable({ records, processingByShortId, onProcess }: ShortsTableProps): JSX.Element {
+export const ShortsTable = memo(function ShortsTable({
+  records,
+  processingByShortId,
+  onProcess,
+  onDelete
+}: ShortsTableProps): JSX.Element {
   return (
     <section className="panel table-panel">
       <table>
@@ -37,6 +44,17 @@ export function ShortsTable({ records, processingByShortId, onProcess }: ShortsT
                 <div><strong>Views:</strong> {formatNumber(record.views)}</div>
                 <div><strong>Likes:</strong> {formatNumber(record.likes)}</div>
                 <div><strong>Comments:</strong> {formatNumber(record.comments)}</div>
+                <div className="details-actions">
+                  <button
+                    className="danger-button"
+                    onClick={() => {
+                      onDelete(record).catch(() => undefined);
+                    }}
+                    type="button"
+                  >
+                    Delete
+                  </button>
+                </div>
                 <div className="chip-row">
                   {record.matchedKeywords.map((keyword) => (
                     <span key={keyword} className="chip">
@@ -77,4 +95,4 @@ export function ShortsTable({ records, processingByShortId, onProcess }: ShortsT
       </table>
     </section>
   );
-}
+});

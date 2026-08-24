@@ -6,6 +6,27 @@ export function formatNumber(value: number | null): string {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(value);
 }
 
+export function formatDecimal(value: number, maximumFractionDigits = 1): string {
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits }).format(value);
+}
+
+export function formatBytes(value: number): string {
+  if (value < 1024) {
+    return `${value} B`;
+  }
+
+  const units = ["KB", "MB", "GB", "TB"];
+  let size = value / 1024;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${formatDecimal(size)} ${units[unitIndex]}`;
+}
+
 export function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
