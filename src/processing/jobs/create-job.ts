@@ -7,6 +7,7 @@ import { getJobPaths } from "../storage/paths";
 
 interface StartReactionJobOptions {
   reactionProvider: ReactionJobRecord["reactionProvider"];
+  recordedStageOutput?: boolean;
   userMedia?: {
     mimeType: string;
     base64: string;
@@ -47,6 +48,7 @@ export async function startReactionJob(
     short,
     requestedDay,
     options.reactionProvider,
+    options.recordedStageOutput ?? false,
     config
   );
   if (providerRequiresUserMedia(options.reactionProvider)) {

@@ -12,10 +12,12 @@ import {
 import { OutputVideoCell } from "./OutputVideoCell";
 import { InlineProcessingStageBar } from "../features/processing/InlineProcessingStageBar";
 import { isActiveProcessingStatus, statusLabel } from "../features/processing/stages";
-import { UserMediaRecorder, type RecordedUserMedia } from "./UserMediaRecorder";
+import { UserMediaRecorder } from "./UserMediaRecorder";
+import type { RecordedUserMedia } from "../lib/user-media-recording";
 
 interface DirectUrlProcessPanelProps {
   onProcessUrl: (request: ProcessShortRequest) => Promise<ReactionJobRecord>;
+  onOpenAdvanced: (provider: AvatarReactionProviderKind, sourceUrl: string) => void;
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
@@ -27,7 +29,7 @@ async function fetchJson<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export const DirectUrlProcessPanel = memo(function DirectUrlProcessPanel({ onProcessUrl }: DirectUrlProcessPanelProps): JSX.Element {
+export const DirectUrlProcessPanel = memo(function DirectUrlProcessPanel({ onProcessUrl, onOpenAdvanced }: DirectUrlProcessPanelProps): JSX.Element {
   const [sourceUrl, setSourceUrl] = useState("");
   const [provider, setProvider] = useState<AvatarReactionProviderKind>("ai-character");
   const [recorderOpen, setRecorderOpen] = useState(false);
@@ -129,23 +131,37 @@ export const DirectUrlProcessPanel = memo(function DirectUrlProcessPanel({ onPro
             <option value="heygen-avatar">HeyGen avatar</option>
           </select>
         </label>
-        <button
-          className="process-button"
-          type="button"
-          disabled={running || recorderOpen}
-          onClick={() => {
-              if (providerRequiresUserMedia(provider)) {
-              setRecorderOpen(true);
-              return;
-            }
+        <div className="process-actions">
+          <button
+            className="process-button"
+            type="button"
+            disabled={running || recorderOpen}
+            onClick={() => {
+                if (providerRequiresUserMedia(provider)) {
+                setRecorderOpen(true);
+                return;
+              }
 
-            submit({}).catch((reason: unknown) => {
-              setLocalError(reason instanceof Error ? reason.message : String(reason));
-            });
-          }}
-        >
-          {buttonLabel}
-        </button>
+              submit({}).catch((reason: unknown) => {
+                setLocalError(reason instanceof Error ? reason.message : String(reason));
+              });
+            }}
+          >
+            {buttonLabel}
+          </button>
+          {providerRequiresUserMedia(provider) ? (
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={running || recorderOpen || sourceUrl.trim() === ""}
+              onClick={() => {
+                onOpenAdvanced(provider, sourceUrl.trim());
+              }}
+            >
+              Advanced
+            </button>
+          ) : null}
+        </div>
       </div>
       <UserMediaRecorder
         anonymizer={providerUserMediaAnonymizer(provider)}

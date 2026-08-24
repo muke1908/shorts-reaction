@@ -118,6 +118,7 @@ function createJob(shortId: string, jobDir: string): ReactionJobRecord {
     status: "completed",
     sourceVideoPath: null,
     providerInputVideoPath: null,
+    recordedStageOutput: false,
     reactionInstructionsPath: null,
     providerRenderJobId: null,
     reactionVideoPath: null,

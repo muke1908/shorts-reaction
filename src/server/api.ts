@@ -13,6 +13,10 @@ import { deleteShortAndArtifacts } from "./delete-short";
 import { getServerRuntimeStatus } from "./runtime-status";
 import { resolveDirectYoutubeShort } from "../processing/sources/direct-youtube-source";
 import { upsertDirectImportRecord } from "./category-store";
+import {
+  loadAdvancedUserReactionPreviewForShort,
+  loadAdvancedUserReactionPreviewForUrl
+} from "./user-reaction-preview";
 
 let activeScan: Promise<Awaited<ReturnType<typeof runMasterAgent>>> | null = null;
 let lastCopilotStatus: CopilotRuntimeStatus = getCopilotRuntimeStatus();
@@ -112,6 +116,35 @@ export function createApiRouter(config: PipelineConfig): express.Router {
     }
   });
 
+  router.get("/user-reaction/preview", async (request, response, next) => {
+    try {
+      const shortId = typeof request.query.shortId === "string" ? request.query.shortId : null;
+      const sourceUrl = typeof request.query.sourceUrl === "string" ? request.query.sourceUrl.trim() : "";
+      const day = typeof request.query.day === "string" ? request.query.day : null;
+      const categorySlug = typeof request.query.categorySlug === "string" ? request.query.categorySlug : null;
+
+      if (shortId) {
+        const payload = await loadAdvancedUserReactionPreviewForShort(shortId, day, categorySlug, config);
+        if (!payload) {
+          response.status(404).json({ error: "Short not found for advanced reaction recording." });
+          return;
+        }
+
+        response.json(payload);
+        return;
+      }
+
+      if (!sourceUrl) {
+        response.status(400).json({ error: "Provide either a shortId or a sourceUrl for advanced reaction recording." });
+        return;
+      }
+
+      response.json(await loadAdvancedUserReactionPreviewForUrl(sourceUrl, config));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post("/scan", async (request, response, next) => {
     try {
       const body = (request.body ?? {}) as ScanRequest;
@@ -147,6 +180,7 @@ export function createApiRouter(config: PipelineConfig): express.Router {
 
       const job = await startReactionJob(short, day ?? null, {
         reactionProvider,
+        recordedStageOutput: body.recordedStageOutput === true,
         userMedia: body.userMedia ?? null
       }, config);
       response.status(202).json(job);
@@ -173,6 +207,7 @@ export function createApiRouter(config: PipelineConfig): express.Router {
       await upsertDirectImportRecord(config.outputDir, short);
       const job = await startReactionJob(short, null, {
         reactionProvider,
+        recordedStageOutput: body.recordedStageOutput === true,
         userMedia: body.userMedia ?? null
       }, config);
       response.status(202).json(job);

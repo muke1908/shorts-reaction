@@ -11,15 +11,17 @@ import {
 } from "../../shared/reaction-providers";
 import { InlineProcessingStageBar } from "../features/processing/InlineProcessingStageBar";
 import { isActiveProcessingStatus, statusLabel } from "../features/processing/stages";
-import { UserMediaRecorder, type RecordedUserMedia } from "./UserMediaRecorder";
+import { UserMediaRecorder } from "./UserMediaRecorder";
+import type { RecordedUserMedia } from "../lib/user-media-recording";
 
 interface ProcessButtonProps {
   record: ShortRecord;
   summary: GeneratedVideoSummary | null;
   onProcess: (record: ShortRecord, request: ProcessShortRequest) => Promise<void>;
+  onOpenAdvanced: (record: ShortRecord, provider: AvatarReactionProviderKind) => void;
 }
 
-export const ProcessButton = memo(function ProcessButton({ record, summary, onProcess }: ProcessButtonProps): JSX.Element {
+export const ProcessButton = memo(function ProcessButton({ record, summary, onProcess, onOpenAdvanced }: ProcessButtonProps): JSX.Element {
   const running = summary ? isActiveProcessingStatus(summary.status) : false;
   const [provider, setProvider] = useState<AvatarReactionProviderKind>("ai-character");
   const [recorderOpen, setRecorderOpen] = useState(false);
@@ -51,18 +53,32 @@ export const ProcessButton = memo(function ProcessButton({ record, summary, onPr
           <option value="heygen-avatar">HeyGen avatar</option>
         </select>
       </label>
-      <button className="process-button" disabled={running || recorderOpen} onClick={() => {
-        if (providerRequiresUserMedia(provider)) {
-          setRecorderOpen(true);
-          return;
-        }
+      <div className="process-actions">
+        <button className="process-button" disabled={running || recorderOpen} onClick={() => {
+          if (providerRequiresUserMedia(provider)) {
+            setRecorderOpen(true);
+            return;
+          }
 
-        startPipeline({
-          reactionProvider: provider
-        }).catch(() => undefined);
-      }}>
-        {running ? "Processing..." : "Process"}
-      </button>
+          startPipeline({
+            reactionProvider: provider
+          }).catch(() => undefined);
+        }}>
+          {running ? "Processing..." : "Process"}
+        </button>
+        {providerRequiresUserMedia(provider) ? (
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={running || recorderOpen}
+            onClick={() => {
+              onOpenAdvanced(record, provider);
+            }}
+          >
+            Advanced
+          </button>
+        ) : null}
+      </div>
       <UserMediaRecorder
         anonymizer={providerUserMediaAnonymizer(provider)}
         open={recorderOpen}

@@ -58,6 +58,7 @@ function createJobRecord(jobDir: string, sourceVideoPath: string | null, created
     status: "completed",
     sourceVideoPath,
     providerInputVideoPath: null,
+    recordedStageOutput: false,
     reactionInstructionsPath: null,
     providerRenderJobId: null,
     reactionVideoPath: null,

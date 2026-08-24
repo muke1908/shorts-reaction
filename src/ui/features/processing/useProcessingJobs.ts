@@ -20,6 +20,7 @@ export interface UseProcessingJobsResult {
   processingByShortId: Record<string, GeneratedVideoSummary | null>;
   refreshSummaries: (records: ShortRecord[]) => Promise<void>;
   startProcessing: (record: ShortRecord, request: ProcessShortRequest) => Promise<void>;
+  registerStartedJob: (shortId: string, job: ReactionJobRecord) => void;
 }
 
 export function useProcessingJobs(
@@ -112,9 +113,24 @@ export function useProcessingJobs(
     }));
   }, []);
 
+  const registerStartedJob = useCallback((shortId: string, job: ReactionJobRecord): void => {
+    setProcessingByShortId((current) => ({
+      ...current,
+      [shortId]: {
+        latestJobId: job.id,
+        status: job.status,
+        outputUrl: null,
+        posterUrl: null,
+        updatedAt: job.updatedAt,
+        error: job.error
+      }
+    }));
+  }, []);
+
   return {
     processingByShortId,
     refreshSummaries,
-    startProcessing
+    startProcessing,
+    registerStartedJob
   };
 }

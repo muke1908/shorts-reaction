@@ -1,5 +1,5 @@
 import { memo } from "react";
-import type { GeneratedVideoSummary, ProcessShortRequest, ShortRecord } from "../../shared/types";
+import type { AvatarReactionProviderKind, GeneratedVideoSummary, ProcessShortRequest, ShortRecord } from "../../shared/types";
 import { formatDate, formatNumber } from "../lib/format";
 import { OutputVideoCell } from "./OutputVideoCell";
 import { ProcessButton } from "./ProcessButton";
@@ -9,13 +9,15 @@ interface ShortsTableProps {
   processingByShortId: Record<string, GeneratedVideoSummary | null>;
   onProcess: (record: ShortRecord, request: ProcessShortRequest) => Promise<void>;
   onDelete: (record: ShortRecord) => Promise<void>;
+  onOpenAdvanced: (record: ShortRecord, provider: AvatarReactionProviderKind) => void;
 }
 
 export const ShortsTable = memo(function ShortsTable({
   records,
   processingByShortId,
   onProcess,
-  onDelete
+  onDelete,
+  onOpenAdvanced
 }: ShortsTableProps): JSX.Element {
   return (
     <section className="panel table-panel">
@@ -84,6 +86,7 @@ export const ShortsTable = memo(function ShortsTable({
                   record={record}
                   summary={processingByShortId[record.id] ?? null}
                   onProcess={onProcess}
+                  onOpenAdvanced={onOpenAdvanced}
                 />
               </td>
               <td className="output-column">

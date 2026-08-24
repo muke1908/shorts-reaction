@@ -3,9 +3,11 @@ import { ShortsTable } from "./components/ShortsTable";
 import { ServerRuntimePanel } from "./components/ServerRuntimePanel";
 import { DirectUrlProcessPanel } from "./components/DirectUrlProcessPanel";
 import { CopilotStatusPanel } from "./components/CopilotStatusPanel";
+import { AdvancedUserReactionPage } from "./components/AdvancedUserReactionPage";
 import { useProcessingJobs } from "./features/processing/useProcessingJobs";
 import { formatRelativeDaysAgo } from "./lib/format";
 import type {
+  AvatarReactionProviderKind,
   CategoryIndexDocument,
   DeleteShortResponse,
   DumpDocument,
@@ -16,6 +18,17 @@ import type {
 
 const DIRECT_IMPORTS_CATEGORY_SLUG = "direct-imports";
 
+type AppRoute =
+  | { kind: "home" }
+  | {
+    kind: "advanced-user-reaction";
+    provider: AvatarReactionProviderKind;
+    shortId: string | null;
+    requestedDay: string | null;
+    categorySlug: string | null;
+    sourceUrl: string | null;
+  };
+
 async function fetchJson<T>(path: string): Promise<T> {
   const response = await fetch(path);
   if (!response.ok) {
@@ -23,6 +36,51 @@ async function fetchJson<T>(path: string): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+function parseAppRoute(location: Location): AppRoute {
+  if (location.pathname !== "/advanced/user-reaction") {
+    return { kind: "home" };
+  }
+
+  const search = new URLSearchParams(location.search);
+  const provider = search.get("provider") as AvatarReactionProviderKind | null;
+  if (!provider) {
+    return { kind: "home" };
+  }
+
+  return {
+    kind: "advanced-user-reaction",
+    provider,
+    shortId: search.get("shortId"),
+    requestedDay: search.get("day"),
+    categorySlug: search.get("categorySlug"),
+    sourceUrl: search.get("sourceUrl")
+  };
+}
+
+function routeToPath(route: AppRoute): string {
+  if (route.kind === "home") {
+    return "/";
+  }
+
+  const search = new URLSearchParams({
+    provider: route.provider
+  });
+  if (route.shortId) {
+    search.set("shortId", route.shortId);
+  }
+  if (route.requestedDay) {
+    search.set("day", route.requestedDay);
+  }
+  if (route.categorySlug) {
+    search.set("categorySlug", route.categorySlug);
+  }
+  if (route.sourceUrl) {
+    search.set("sourceUrl", route.sourceUrl);
+  }
+
+  return `/advanced/user-reaction?${search.toString()}`;
 }
 
 export function App(): JSX.Element {
@@ -33,6 +91,7 @@ export function App(): JSX.Element {
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanQuery, setScanQuery] = useState("");
+  const [route, setRoute] = useState<AppRoute>(() => parseAppRoute(window.location));
   const categoryRequestIdRef = useRef(0);
 
   useEffect(() => {
@@ -59,8 +118,23 @@ export function App(): JSX.Element {
   const rankedRecords = useMemo(() => document?.records ?? [], [document]);
   const {
     processingByShortId,
-    startProcessing
+    startProcessing,
+    registerStartedJob
   } = useProcessingJobs(rankedRecords, handleError);
+
+  const navigate = useCallback((nextRoute: AppRoute) => {
+    window.history.pushState(null, "", routeToPath(nextRoute));
+    setRoute(nextRoute);
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setRoute(parseAppRoute(window.location));
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const handleScan = useCallback(async (): Promise<void> => {
     const trimmedQuery = scanQuery.trim();
@@ -181,6 +255,36 @@ export function App(): JSX.Element {
     return job;
   }, [document?.categorySlug]);
 
+  const handleAdvancedJobStarted = useCallback(async (job: ReactionJobRecord): Promise<void> => {
+    registerStartedJob(job.shortId, job);
+    try {
+      const nextCategories = await fetchJson<CategoryIndexDocument>("/api/categories");
+      setCategories(nextCategories);
+
+      if (document?.categorySlug === DIRECT_IMPORTS_CATEGORY_SLUG) {
+        setDocument(await fetchJson<DumpDocument>(`/api/dump?category=${encodeURIComponent(DIRECT_IMPORTS_CATEGORY_SLUG)}`));
+      }
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    }
+  }, [document?.categorySlug, registerStartedJob]);
+
+  if (route.kind === "advanced-user-reaction") {
+    return (
+      <AdvancedUserReactionPage
+        provider={route.provider}
+        shortId={route.shortId}
+        requestedDay={route.requestedDay}
+        categorySlug={route.categorySlug}
+        sourceUrl={route.sourceUrl}
+        onBack={() => {
+          navigate({ kind: "home" });
+        }}
+        onJobStarted={handleAdvancedJobStarted}
+      />
+    );
+  }
+
   return (
     <main className="layout">
       <header className="hero">
@@ -219,10 +323,22 @@ export function App(): JSX.Element {
           </button>
         </div>
       </section>
-      <DirectUrlProcessPanel onProcessUrl={(request) => handleProcessUrl(request).catch((reason: unknown) => {
-        setError(reason instanceof Error ? reason.message : String(reason));
-        throw reason;
-      })} />
+      <DirectUrlProcessPanel
+        onProcessUrl={(request) => handleProcessUrl(request).catch((reason: unknown) => {
+          setError(reason instanceof Error ? reason.message : String(reason));
+          throw reason;
+        })}
+        onOpenAdvanced={(provider, sourceUrl) => {
+          navigate({
+            kind: "advanced-user-reaction",
+            provider,
+            shortId: null,
+            requestedDay: null,
+            categorySlug: null,
+            sourceUrl
+          });
+        }}
+      />
       {initialLoading ? <section className="panel">Loading dump...</section> : null}
       {error ? <section className="panel error">{error}</section> : null}
       <ServerRuntimePanel />
@@ -256,6 +372,16 @@ export function App(): JSX.Element {
             processingByShortId={processingByShortId}
             onDelete={handleDelete}
             onProcess={handleProcess}
+            onOpenAdvanced={(record, provider) => {
+              navigate({
+                kind: "advanced-user-reaction",
+                provider,
+                shortId: record.id,
+                requestedDay: document.requestedDay,
+                categorySlug: document.categorySlug ?? null,
+                sourceUrl: null
+              });
+            }}
           />
         </>
       ) : null}

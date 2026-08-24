@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { UserMediaAnonymizerKind } from "../../shared/types";
 import { getUserMediaAnonymizerDefinition } from "../lib/user-media-anonymizers";
-
-export interface RecordedUserMedia {
-  mimeType: string;
-  base64: string;
-}
+import { prepareUserMediaCapture, supportsUserMediaRecording } from "../lib/user-media-capture";
+import type { RecordedUserMedia } from "../lib/user-media-recording";
+import { mediaBlobToBase64, preferredRecordingMimeType } from "../lib/user-media-recording";
+export type { RecordedUserMedia } from "../lib/user-media-recording";
 
 interface UserMediaRecorderProps {
   anonymizer?: UserMediaAnonymizerKind;
@@ -16,19 +15,7 @@ interface UserMediaRecorderProps {
 }
 
 function preferredMimeType(): string {
-  const candidates = [
-    "video/webm;codecs=vp9,opus",
-    "video/webm;codecs=vp8,opus",
-    "video/webm"
-  ];
-
-  for (const candidate of candidates) {
-    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(candidate)) {
-      return candidate;
-    }
-  }
-
-  return "";
+  return preferredRecordingMimeType();
 }
 
 export function UserMediaRecorder({
@@ -52,7 +39,7 @@ export function UserMediaRecorder({
   const [recording, setRecording] = useState(false);
 
   const canRecord = useMemo(
-    () => typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia) && typeof MediaRecorder !== "undefined",
+    () => supportsUserMediaRecording(),
     []
   );
 
@@ -66,7 +53,6 @@ export function UserMediaRecorder({
     anonymizerCleanupRef.current?.();
     anonymizerCleanupRef.current = null;
     recordingStreamRef.current = null;
-    streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     recorderRef.current = null;
     if (previewRef.current) {
@@ -87,16 +73,11 @@ export function UserMediaRecorder({
       return;
     }
 
-    navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true
-    })
-      .then(async (stream) => {
-        streamRef.current = stream;
-        const definition = getUserMediaAnonymizerDefinition(anonymizer);
-        const session = await definition.start(stream, previewRef.current);
-        anonymizerCleanupRef.current = session.cleanup;
-        recordingStreamRef.current = session.recordingStream;
+    prepareUserMediaCapture(anonymizer, previewRef.current)
+      .then(async (capture) => {
+        streamRef.current = capture.sourceStream;
+        anonymizerCleanupRef.current = capture.cleanup;
+        recordingStreamRef.current = capture.recordingStream;
 
         setCameraReady(true);
       })
@@ -138,15 +119,7 @@ export function UserMediaRecorder({
       const blob = new Blob(chunksRef.current, {
         type: recorder.mimeType || "video/webm"
       });
-      const base64 = await blob.arrayBuffer().then((buffer) => {
-        let binary = "";
-        const bytes = new Uint8Array(buffer);
-        const chunkSize = 0x8000;
-        for (let index = 0; index < bytes.length; index += chunkSize) {
-          binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
-        }
-        return btoa(binary);
-      });
+      const base64 = await mediaBlobToBase64(blob);
 
       releaseCamera();
       setRecording(false);

@@ -227,10 +227,18 @@ export interface ProcessShortRequest {
   categorySlug?: string | null;
   sourceUrl?: string;
   reactionProvider?: AvatarReactionProviderKind;
+  recordedStageOutput?: boolean;
   userMedia?: {
     mimeType: string;
     base64: string;
   } | null;
+}
+
+export interface AdvancedUserReactionPreviewDocument {
+  record: ShortRecord;
+  requestedDay: string | null;
+  categorySlug: string | null;
+  previewVideoUrl: string;
 }
 
 export interface ReactionInstructions {
@@ -256,6 +264,7 @@ export interface ReactionJobRecord {
   status: ProcessingStatus;
   sourceVideoPath: string | null;
   providerInputVideoPath: string | null;
+  recordedStageOutput: boolean;
   reactionInstructionsPath: string | null;
   providerRenderJobId: string | null;
   reactionVideoPath: string | null;

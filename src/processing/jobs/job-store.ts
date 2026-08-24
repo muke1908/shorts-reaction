@@ -33,6 +33,7 @@ export async function createReactionJob(
   short: ShortRecord,
   requestedDay: string | null,
   reactionProvider: ReactionJobRecord["reactionProvider"],
+  recordedStageOutput: boolean,
   config: PipelineConfig
 ): Promise<ReactionJobRecord> {
   await mkdir(getJobsRoot(config), { recursive: true });
@@ -58,6 +59,7 @@ export async function createReactionJob(
     status: "pending",
     sourceVideoPath: null,
     providerInputVideoPath: null,
+    recordedStageOutput,
     reactionInstructionsPath: null,
     providerRenderJobId: null,
     reactionVideoPath: null,
