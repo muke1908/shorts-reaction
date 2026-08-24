@@ -1,17 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AdvancedUserReactionPreviewDocument,
-  AvatarReactionProviderKind,
-  GeneratedVideoSummary,
-  ReactionJobRecord
+  AvatarReactionProviderKind
 } from "../../shared/types";
 import { providerUserMediaAnonymizer } from "../../shared/reaction-providers";
 import type { RecordedUserMedia } from "../lib/user-media-recording";
 import { mediaBlobToBase64, preferredRecordingMimeType } from "../lib/user-media-recording";
 import { prepareUserMediaCapture, supportsUserMediaRecording } from "../lib/user-media-capture";
-import { InlineProcessingStageBar } from "../features/processing/InlineProcessingStageBar";
-import { isActiveProcessingStatus, statusLabel } from "../features/processing/stages";
-import { OutputVideoCell } from "./OutputVideoCell";
 
 interface AdvancedUserReactionPageProps {
   provider: AvatarReactionProviderKind;
@@ -20,7 +15,6 @@ interface AdvancedUserReactionPageProps {
   categorySlug?: string | null;
   sourceUrl?: string | null;
   onBack: () => void;
-  onJobStarted: (job: ReactionJobRecord) => Promise<void>;
 }
 
 interface StageFrame {
@@ -86,14 +80,12 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
   const [sourcePlaying, setSourcePlaying] = useState(false);
   const [saving, setSaving] = useState(false);
   const [recordedMedia, setRecordedMedia] = useState<RecordedUserMedia | null>(null);
-  const [summary, setSummary] = useState<GeneratedVideoSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stageFrame, setStageFrame] = useState<StageFrame | null>(null);
   const canRecord = useMemo(() => supportsUserMediaRecording(), []);
   const anonymizer = providerUserMediaAnonymizer(props.provider);
-  const running = summary ? isActiveProcessingStatus(summary.status) : false;
   const canToggleCamera = !recording && !saving;
-  const canStartRecording = cameraEnabled && cameraReady && !loadingPreview && !recording && !saving && !running;
+  const canStartRecording = cameraEnabled && cameraReady && !loadingPreview && !recording && !saving;
   const canTogglePlayback = Boolean(sourceFeedElement);
   const canSave = !recording && !saving && Boolean(recordedMedia);
   const canRestart = !recording;
@@ -404,26 +396,6 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
     };
   }, [cameraFeedElement, cameraReady, sourceFeedElement, stageFrame]);
 
-  useEffect(() => {
-    if (!previewDocument?.record.id || !summary || !isActiveProcessingStatus(summary.status)) {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      fetchJson<GeneratedVideoSummary | null>(`/api/process/by-short/${previewDocument.record.id}`)
-        .then((payload) => {
-          if (payload) {
-            setSummary(payload);
-          }
-        })
-        .catch((reason: unknown) => {
-          setError(reason instanceof Error ? reason.message : String(reason));
-        });
-    }, 1500);
-
-    return () => window.clearInterval(timer);
-  }, [previewDocument?.record.id, summary]);
-
   const createStageRecordingStream = useCallback(async (): Promise<{
     stream: MediaStream;
     cleanup: () => void;
@@ -728,15 +700,6 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
             {statusMessage || "\u00A0"}
           </div>
         </div>
-
-        {summary ? (
-          <div className="advanced-reaction-page__result">
-            <div className="process-status small-text">Status: {statusLabel(summary.status)}</div>
-            <InlineProcessingStageBar summary={summary} />
-            {summary.error ? <div className="process-meta processing-error small-text">{summary.error}</div> : null}
-            <OutputVideoCell summary={summary} />
-          </div>
-        ) : null}
       </section>
     </main>
   );

@@ -1,8 +1,60 @@
-# YouTube Shorts Topic Virality Pipeline
+# YouTube Shorts Reaction Studio
 
-This project scans public YouTube Shorts metadata for a user-supplied topic, runs a markdown-guided Copilot CLI workflow to generate search terms, review candidates, dynamically regroup semantic categories across the stored library, and rank them, then writes JSON dumps plus markdown reports locally and exposes a category-driven UI.
+This project now ships as a **two-surface reaction studio**:
 
-## LLM-first workflow
+1. **Quick reaction creator** — paste a YouTube Short, open the 9:16 staged recorder, then play, react, and record locally.
+2. **LLM pipeline** — scan YouTube Shorts for a topic, let Copilot review and rank virality, persist JSON dumps by category and day, and generate reaction-video outputs from the ranked list.
+
+Both surfaces are available from the app landing page and share the same server, downloader, provider, and composition stack.
+
+## Product surfaces
+
+| Surface | Route | Purpose |
+| --- | --- | --- |
+| Feature chooser | `/` | Entry page that lets the user choose between the two major workflows |
+| Quick reaction creator | `/quick-reaction` | Paste a YouTube Shorts/watch URL, choose a user-media capture mode, and open the recorder |
+| Advanced stage recorder | `/quick-reaction/advanced` | Immersive 9:16 source-plus-camera reaction canvas with manual record / play / pause / save flow |
+| LLM pipeline dashboard | `/pipeline` | Run Copilot-driven scans, browse ranked Shorts, process direct URLs, and manage generated outputs |
+
+## Screenshots
+
+### Feature chooser
+
+![Feature chooser](docs/assets/feature-landing.png)
+
+### Quick reaction creator
+
+![Quick reaction creator](docs/assets/quick-reaction-start.png)
+
+### LLM pipeline dashboard
+
+![LLM pipeline dashboard](docs/assets/pipeline-dashboard.png)
+
+## Quick reaction creator
+
+The quick reaction flow is intentionally direct:
+
+1. Open `/quick-reaction`.
+2. Paste a YouTube Shorts, watch, or `youtu.be` URL.
+3. Choose a supported **user-media** capture provider.
+4. Open the staged recorder.
+5. Turn on the camera, start recording, and control source playback manually.
+6. Save to open the captured stage output in a new tab.
+
+The advanced recorder captures the **actual rendered stage**, not just raw camera input:
+
+- source video in the top 60%
+- camera or anonymized user feed in the bottom 40%
+- manual play / pause timing driven by the user
+- local preview-first workflow for fast iteration
+
+Supported quick-reaction providers:
+
+- **User media**
+- **User media + sunglasses**
+- **User media + pixelated**
+
+## LLM-first pipeline workflow
 
 This app is intentionally **Copilot/LLM-driven**, not just an API scraper with a thin prompt on top. The LLM is responsible for the key judgment calls in the pipeline:
 
@@ -13,7 +65,7 @@ This app is intentionally **Copilot/LLM-driven**, not just an API scraper with a
 
 The deterministic code handles data collection, normalization, eligibility filters, persistence, and media composition. The LLM handles the meaning-heavy parts: **intent expansion, topical judgment, grouping, and explanation**.
 
-## What it does
+## What the pipeline does
 
 1. Accepts a free-text scan query from the CLI or UI.
 2. Uses Copilot CLI to turn that query into effective YouTube Shorts search terms.
@@ -90,7 +142,13 @@ npm run copilot:scan -- --query "indian politics" --max-results 5 --serve-ui
 
 The local server runs on `http://localhost:3000` by default.
 
-Inside the UI, you enter a free-text topic, press **Scan**, and Copilot generates the YouTube search terms, reviews the resulting videos, then rebuilds the semantic category list on the fly so distinct topics can split into clearer buckets before refreshing the UI.
+Once the server is running:
+
+- open `/` to choose a workflow
+- open `/quick-reaction` for the live reaction recorder path
+- open `/pipeline` for the Copilot-driven scan, ranking, and processing dashboard
+
+Inside the pipeline UI, you enter a free-text topic, press **Scan**, and Copilot generates the YouTube search terms, reviews the resulting videos, then rebuilds the semantic category list on the fly so distinct topics can split into clearer buckets before refreshing the UI.
 
 Each row also includes a **Delete** button that removes that Short from the local dump files and deletes any generated job folders tied to that Short.
 If a day-specific or iteration dump becomes empty after deletion, that JSON file is removed from disk as part of the cleanup.

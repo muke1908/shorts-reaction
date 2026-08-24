@@ -4,6 +4,8 @@ import { ServerRuntimePanel } from "./components/ServerRuntimePanel";
 import { DirectUrlProcessPanel } from "./components/DirectUrlProcessPanel";
 import { CopilotStatusPanel } from "./components/CopilotStatusPanel";
 import { AdvancedUserReactionPage } from "./components/AdvancedUserReactionPage";
+import { FeatureLandingPage } from "./components/FeatureLandingPage";
+import { QuickReactionStartPage } from "./components/QuickReactionStartPage";
 import { useProcessingJobs } from "./features/processing/useProcessingJobs";
 import { formatRelativeDaysAgo } from "./lib/format";
 import type {
@@ -19,7 +21,9 @@ import type {
 const DIRECT_IMPORTS_CATEGORY_SLUG = "direct-imports";
 
 type AppRoute =
-  | { kind: "home" }
+  | { kind: "feature-landing" }
+  | { kind: "pipeline" }
+  | { kind: "quick-reaction" }
   | {
     kind: "advanced-user-reaction";
     provider: AvatarReactionProviderKind;
@@ -27,6 +31,7 @@ type AppRoute =
     requestedDay: string | null;
     categorySlug: string | null;
     sourceUrl: string | null;
+    returnTo: "pipeline" | "quick-reaction";
   };
 
 async function fetchJson<T>(path: string): Promise<T> {
@@ -39,14 +44,26 @@ async function fetchJson<T>(path: string): Promise<T> {
 }
 
 function parseAppRoute(location: Location): AppRoute {
-  if (location.pathname !== "/advanced/user-reaction") {
-    return { kind: "home" };
+  if (location.pathname === "/") {
+    return { kind: "feature-landing" };
+  }
+
+  if (location.pathname === "/pipeline") {
+    return { kind: "pipeline" };
+  }
+
+  if (location.pathname === "/quick-reaction") {
+    return { kind: "quick-reaction" };
+  }
+
+  if (location.pathname !== "/quick-reaction/advanced" && location.pathname !== "/advanced/user-reaction") {
+    return { kind: "feature-landing" };
   }
 
   const search = new URLSearchParams(location.search);
   const provider = search.get("provider") as AvatarReactionProviderKind | null;
   if (!provider) {
-    return { kind: "home" };
+    return { kind: "quick-reaction" };
   }
 
   return {
@@ -55,13 +72,22 @@ function parseAppRoute(location: Location): AppRoute {
     shortId: search.get("shortId"),
     requestedDay: search.get("day"),
     categorySlug: search.get("categorySlug"),
-    sourceUrl: search.get("sourceUrl")
+    sourceUrl: search.get("sourceUrl"),
+    returnTo: search.get("returnTo") === "pipeline" ? "pipeline" : "quick-reaction"
   };
 }
 
 function routeToPath(route: AppRoute): string {
-  if (route.kind === "home") {
+  if (route.kind === "feature-landing") {
     return "/";
+  }
+
+  if (route.kind === "pipeline") {
+    return "/pipeline";
+  }
+
+  if (route.kind === "quick-reaction") {
+    return "/quick-reaction";
   }
 
   const search = new URLSearchParams({
@@ -79,37 +105,46 @@ function routeToPath(route: AppRoute): string {
   if (route.sourceUrl) {
     search.set("sourceUrl", route.sourceUrl);
   }
+  search.set("returnTo", route.returnTo);
 
-  return `/advanced/user-reaction?${search.toString()}`;
+  return `/quick-reaction/advanced?${search.toString()}`;
 }
 
 export function App(): JSX.Element {
   const [document, setDocument] = useState<DumpDocument | null>(null);
   const [categories, setCategories] = useState<CategoryIndexDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(false);
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanQuery, setScanQuery] = useState("");
   const [route, setRoute] = useState<AppRoute>(() => parseAppRoute(window.location));
   const categoryRequestIdRef = useRef(0);
 
-  useEffect(() => {
+  const loadPipelineData = useCallback(async (): Promise<void> => {
     setInitialLoading(true);
     setError(null);
-    Promise.all([
-      fetchJson<DumpDocument>("/api/dump"),
-      fetchJson<CategoryIndexDocument>("/api/categories")
-    ])
-      .then(([dump, categoryIndex]) => {
-        setDocument(dump);
-        setCategories(categoryIndex);
-      })
-      .catch((reason: unknown) => {
-        setError(reason instanceof Error ? reason.message : String(reason));
-      })
-      .finally(() => setInitialLoading(false));
+    try {
+      const [dump, categoryIndex] = await Promise.all([
+        fetchJson<DumpDocument>("/api/dump"),
+        fetchJson<CategoryIndexDocument>("/api/categories")
+      ]);
+      setDocument(dump);
+      setCategories(categoryIndex);
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setInitialLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    if (route.kind !== "pipeline" || (document && categories)) {
+      return;
+    }
+
+    void loadPipelineData();
+  }, [categories, document, loadPipelineData, route.kind]);
 
   const handleError = useCallback((message: string) => {
     setError(message);
@@ -118,8 +153,7 @@ export function App(): JSX.Element {
   const rankedRecords = useMemo(() => document?.records ?? [], [document]);
   const {
     processingByShortId,
-    startProcessing,
-    registerStartedJob
+    startProcessing
   } = useProcessingJobs(rankedRecords, handleError);
 
   const navigate = useCallback((nextRoute: AppRoute) => {
@@ -255,20 +289,6 @@ export function App(): JSX.Element {
     return job;
   }, [document?.categorySlug]);
 
-  const handleAdvancedJobStarted = useCallback(async (job: ReactionJobRecord): Promise<void> => {
-    registerStartedJob(job.shortId, job);
-    try {
-      const nextCategories = await fetchJson<CategoryIndexDocument>("/api/categories");
-      setCategories(nextCategories);
-
-      if (document?.categorySlug === DIRECT_IMPORTS_CATEGORY_SLUG) {
-        setDocument(await fetchJson<DumpDocument>(`/api/dump?category=${encodeURIComponent(DIRECT_IMPORTS_CATEGORY_SLUG)}`));
-      }
-    } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : String(reason));
-    }
-  }, [document?.categorySlug, registerStartedJob]);
-
   if (route.kind === "advanced-user-reaction") {
     return (
       <AdvancedUserReactionPage
@@ -278,9 +298,42 @@ export function App(): JSX.Element {
         categorySlug={route.categorySlug}
         sourceUrl={route.sourceUrl}
         onBack={() => {
-          navigate({ kind: "home" });
+          navigate({ kind: route.returnTo });
         }}
-        onJobStarted={handleAdvancedJobStarted}
+      />
+    );
+  }
+
+  if (route.kind === "feature-landing") {
+    return (
+      <FeatureLandingPage
+        onOpenQuickReaction={() => {
+          navigate({ kind: "quick-reaction" });
+        }}
+        onOpenPipeline={() => {
+          navigate({ kind: "pipeline" });
+        }}
+      />
+    );
+  }
+
+  if (route.kind === "quick-reaction") {
+    return (
+      <QuickReactionStartPage
+        onBack={() => {
+          navigate({ kind: "feature-landing" });
+        }}
+        onOpenRecorder={(provider, sourceUrl) => {
+          navigate({
+            kind: "advanced-user-reaction",
+            provider,
+            shortId: null,
+            requestedDay: null,
+            categorySlug: null,
+            sourceUrl,
+            returnTo: "quick-reaction"
+          });
+        }}
       />
     );
   }
@@ -288,10 +341,19 @@ export function App(): JSX.Element {
   return (
     <main className="layout">
       <header className="hero">
-        <p className="eyebrow">YouTube short reaction maker</p>
-        <p>
-          Run a fresh scan, rank the top 10 likely viral Shorts, archive each scan iteration with its timestamp, and generate stacked 9:16 reaction-layout videos from the latest list.
-        </p>
+        <div className="hero__header-row">
+          <div>
+            <p className="eyebrow">LLM pipeline</p>
+            <p>
+              Run a fresh scan, rank the top 10 likely viral Shorts, archive each scan iteration with its timestamp, and generate stacked 9:16 reaction-layout videos from the latest list.
+            </p>
+          </div>
+          <button type="button" className="secondary-button" onClick={() => {
+            navigate({ kind: "feature-landing" });
+          }}>
+            Back to features
+          </button>
+        </div>
       </header>
       <section className="panel action-bar">
         <div className="action-bar__summary">
@@ -335,7 +397,8 @@ export function App(): JSX.Element {
             shortId: null,
             requestedDay: null,
             categorySlug: null,
-            sourceUrl
+            sourceUrl,
+            returnTo: "pipeline"
           });
         }}
       />
@@ -379,7 +442,8 @@ export function App(): JSX.Element {
                 shortId: record.id,
                 requestedDay: document.requestedDay,
                 categorySlug: document.categorySlug ?? null,
-                sourceUrl: null
+                sourceUrl: null,
+                returnTo: "pipeline"
               });
             }}
           />

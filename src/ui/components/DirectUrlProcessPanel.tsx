@@ -6,6 +6,7 @@ import type {
   ReactionJobRecord
 } from "../../shared/types";
 import {
+  REACTION_PROVIDER_OPTIONS,
   providerRequiresUserMedia,
   providerUserMediaAnonymizer
 } from "../../shared/reaction-providers";
@@ -124,11 +125,9 @@ export const DirectUrlProcessPanel = memo(function DirectUrlProcessPanel({ onPro
               setLocalError(null);
             }}
           >
-            <option value="ai-character">AI character (static)</option>
-            <option value="user-media">User media</option>
-            <option value="user-media-sunglasses">User media + sunglasses</option>
-            <option value="user-media-pixelated">User media + pixelated</option>
-            <option value="heygen-avatar">HeyGen avatar</option>
+            {REACTION_PROVIDER_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
         </label>
         <div className="process-actions">
