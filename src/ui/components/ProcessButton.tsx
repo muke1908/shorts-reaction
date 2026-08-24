@@ -5,6 +5,10 @@ import type {
   ProcessShortRequest,
   ShortRecord
 } from "../../shared/types";
+import {
+  providerRequiresUserMedia,
+  providerUserMediaAnonymizer
+} from "../../shared/reaction-providers";
 import { InlineProcessingStageBar } from "../features/processing/InlineProcessingStageBar";
 import { isActiveProcessingStatus, statusLabel } from "../features/processing/stages";
 import { UserMediaRecorder, type RecordedUserMedia } from "./UserMediaRecorder";
@@ -42,11 +46,13 @@ export const ProcessButton = memo(function ProcessButton({ record, summary, onPr
         }}>
           <option value="ai-character">AI character (static)</option>
           <option value="user-media">User media</option>
+          <option value="user-media-sunglasses">User media + sunglasses</option>
+          <option value="user-media-pixelated">User media + pixelated</option>
           <option value="heygen-avatar">HeyGen avatar</option>
         </select>
       </label>
       <button className="process-button" disabled={running || recorderOpen} onClick={() => {
-        if (provider === "user-media") {
+        if (providerRequiresUserMedia(provider)) {
           setRecorderOpen(true);
           return;
         }
@@ -58,6 +64,7 @@ export const ProcessButton = memo(function ProcessButton({ record, summary, onPr
         {running ? "Processing..." : "Process"}
       </button>
       <UserMediaRecorder
+        anonymizer={providerUserMediaAnonymizer(provider)}
         open={recorderOpen}
         onCancel={() => {
           setRecorderOpen(false);

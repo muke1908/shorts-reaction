@@ -114,6 +114,8 @@ class HeyGenAvatarProviderAdapter implements AvatarReactionProviderAdapter {
 export function getAvatarReactionProvider(kind: AvatarReactionProviderKind): AvatarReactionProviderAdapter {
   switch (kind) {
     case "user-media":
+    case "user-media-sunglasses":
+    case "user-media-pixelated":
       return new UserMediaAvatarReactionProviderAdapter();
     case "ai-character":
       return new AiCharacterAvatarReactionProviderAdapter();

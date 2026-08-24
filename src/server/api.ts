@@ -1,9 +1,10 @@
 import express from "express";
-import type { AvatarReactionProviderKind, ProcessShortRequest, ScanRequest } from "../shared/types";
+import type { ProcessShortRequest, ScanRequest } from "../shared/types";
 import { relative } from "node:path";
 import { runMasterAgent } from "../agents/master-agent";
 import { getCopilotRuntimeStatus, resetCopilotRuntimeStatus } from "../copilot/client";
 import type { CopilotRuntimeStatus, PipelineConfig } from "../shared/types";
+import { providerRequiresUserMedia } from "../shared/reaction-providers";
 import { findLatestJobForShort, getReactionJob } from "../processing/jobs/job-store";
 import { startReactionJob } from "../processing/jobs/create-job";
 import type { GeneratedVideoSummary } from "../shared/types";
@@ -55,10 +56,6 @@ function toGeneratedSummary(config: PipelineConfig, record: Awaited<ReturnType<t
     updatedAt: record.updatedAt,
     error: record.error
   };
-}
-
-function providerRequiresUserMedia(provider: AvatarReactionProviderKind): boolean {
-  return provider === "user-media";
 }
 
 export function createApiRouter(config: PipelineConfig): express.Router {

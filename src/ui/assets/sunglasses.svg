@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" fill="none">
+  <defs>
+    <linearGradient id="frame" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#090C14"/>
+      <stop offset="0.5" stop-color="#111827"/>
+      <stop offset="1" stop-color="#090C14"/>
+    </linearGradient>
+    <linearGradient id="lens" x1="0" y1="0" x2="0" y2="320" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A" stop-opacity="0.97"/>
+      <stop offset="1" stop-color="#020617" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+  <rect x="55" y="170" width="120" height="26" rx="13" fill="url(#frame)"/>
+  <rect x="1025" y="170" width="120" height="26" rx="13" fill="url(#frame)"/>
+  <rect x="150" y="60" width="395" height="250" rx="110" fill="url(#lens)" stroke="rgba(255,255,255,0.16)" stroke-width="18"/>
+  <rect x="655" y="60" width="395" height="250" rx="110" fill="url(#lens)" stroke="rgba(255,255,255,0.16)" stroke-width="18"/>
+  <rect x="520" y="155" width="160" height="52" rx="24" fill="url(#frame)"/>
+  <rect x="160" y="72" width="375" height="44" rx="22" fill="rgba(255,255,255,0.04)"/>
+  <rect x="665" y="72" width="375" height="44" rx="22" fill="rgba(255,255,255,0.04)"/>
+</svg>

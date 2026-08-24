@@ -1,4 +1,5 @@
 import type { PipelineConfig, ReactionJobRecord, ShortRecord } from "../../shared/types";
+import { providerRequiresUserMedia } from "../../shared/reaction-providers";
 import { createReactionJob, findLatestJobForShort } from "./job-store";
 import { runReactionJob } from "./run-job";
 import { writeFile } from "node:fs/promises";
@@ -48,7 +49,7 @@ export async function startReactionJob(
     options.reactionProvider,
     config
   );
-  if (options.reactionProvider === "user-media") {
+  if (providerRequiresUserMedia(options.reactionProvider)) {
     if (!options.userMedia?.base64 || !options.userMedia.mimeType.startsWith("video/")) {
       throw new Error("This provider requires a recorded video capture.");
     }

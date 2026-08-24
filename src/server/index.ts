@@ -4,13 +4,16 @@ import { resolve } from "node:path";
 import { loadConfig } from "../config/env";
 import type { PipelineConfig } from "../shared/types";
 import { createApiRouter } from "./api";
+import { MEDIAPIPE_VISION_WASM_BASE_PATH } from "../ui/lib/mediapipe-paths";
 
 export async function startServer(config: PipelineConfig): Promise<void> {
   const app = express();
   const uiDist = resolve(process.cwd(), "ui-dist");
+  const mediapipeVisionWasmDir = resolve(process.cwd(), "node_modules/@mediapipe/tasks-vision/wasm");
 
   app.use("/api", createApiRouter(config));
   app.use("/generated", express.static(config.generatedDir));
+  app.use(MEDIAPIPE_VISION_WASM_BASE_PATH, express.static(mediapipeVisionWasmDir));
 
   if (existsSync(uiDist)) {
     app.use(express.static(uiDist));

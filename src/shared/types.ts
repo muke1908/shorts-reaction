@@ -2,7 +2,10 @@ export type SourceKind = "youtube-api" | "youtube-web";
 export type AvatarReactionProviderKind =
   | "ai-character"
   | "user-media"
+  | "user-media-sunglasses"
+  | "user-media-pixelated"
   | "heygen-avatar";
+export type UserMediaAnonymizerKind = "none" | "sunglasses" | "pixelated";
 export type ProcessingStatus =
   | "pending"
   | "downloading"

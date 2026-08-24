@@ -86,6 +86,7 @@ npm run copilot:scan -- --query "indian politics" --max-results 10 --serve-ui
 2. In the target row’s **Process** section, choose an **Avatar reaction provider**:
    - **AI character** uses a static server-hosted reaction clip from `AI_CHARACTER_ASSET_DIR` (defaults to `data/static/ai-character`)
    - **User media provider** to record yourself with the camera and reuse that recording as the reaction layer
+   - **User media + sunglasses** to reuse the same camera path but apply a live browser-side anonymity sunglasses overlay before the clip is sent to the pipeline
    - **HeyGen avatar** to render a lower-panel reaction using the locally authenticated HeyGen CLI/OAuth path when available, or API-key fallback otherwise
 3. If you choose **User media provider**, click **Process**. The row opens an inline camera recorder.
 4. Record your reaction and click **Stop recording**. The browser releases the camera stream immediately after stopping, and the captured clip is forwarded to the pipeline automatically.

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { UserMediaAnonymizerKind } from "../../shared/types";
+import { getUserMediaAnonymizerDefinition } from "../lib/user-media-anonymizers";
 
 export interface RecordedUserMedia {
   mimeType: string;
@@ -6,6 +8,7 @@ export interface RecordedUserMedia {
 }
 
 interface UserMediaRecorderProps {
+  anonymizer?: UserMediaAnonymizerKind;
   open: boolean;
   onRecorded: (media: RecordedUserMedia) => void;
   onCancel: () => void;
@@ -29,6 +32,7 @@ function preferredMimeType(): string {
 }
 
 export function UserMediaRecorder({
+  anonymizer = "none",
   open,
   onRecorded,
   onCancel,
@@ -36,7 +40,9 @@ export function UserMediaRecorder({
 }: UserMediaRecorderProps): JSX.Element | null {
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const anonymizerCleanupRef = useRef<(() => void) | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const discardRecordingRef = useRef(false);
   const onRecordedRef = useRef(onRecorded);
@@ -57,6 +63,9 @@ export function UserMediaRecorder({
   }, [onCancel, onError, onRecorded]);
 
   function releaseCamera(): void {
+    anonymizerCleanupRef.current?.();
+    anonymizerCleanupRef.current = null;
+    recordingStreamRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     recorderRef.current = null;
@@ -84,10 +93,11 @@ export function UserMediaRecorder({
     })
       .then(async (stream) => {
         streamRef.current = stream;
-        if (previewRef.current) {
-          previewRef.current.srcObject = stream;
-          await previewRef.current.play().catch(() => undefined);
-        }
+        const definition = getUserMediaAnonymizerDefinition(anonymizer);
+        const session = await definition.start(stream, previewRef.current);
+        anonymizerCleanupRef.current = session.cleanup;
+        recordingStreamRef.current = session.recordingStream;
+
         setCameraReady(true);
       })
       .catch((reason: unknown) => {
@@ -98,21 +108,22 @@ export function UserMediaRecorder({
     return () => {
       releaseCamera();
     };
-  }, [canRecord, open]);
+  }, [anonymizer, canRecord, open]);
 
   if (!open) {
     return null;
   }
 
   async function startRecording(): Promise<void> {
-    if (!streamRef.current) {
+    const activeStream = recordingStreamRef.current ?? streamRef.current;
+    if (!activeStream) {
       return;
     }
 
     const mimeType = preferredMimeType();
     const recorder = mimeType
-      ? new MediaRecorder(streamRef.current, { mimeType })
-      : new MediaRecorder(streamRef.current);
+      ? new MediaRecorder(activeStream, { mimeType })
+      : new MediaRecorder(activeStream);
     chunksRef.current = [];
     discardRecordingRef.current = false;
     recorderRef.current = recorder;
@@ -174,7 +185,9 @@ export function UserMediaRecorder({
 
   return (
     <div className="user-media-recorder">
-      <div className="small-text">Record your reaction. The camera turns off automatically after you stop recording.</div>
+      <div className="small-text">
+        {getUserMediaAnonymizerDefinition(anonymizer).description}
+      </div>
       <video ref={previewRef} className="user-media-recorder__preview" autoPlay muted playsInline />
       <div className="user-media-recorder__actions">
         <button className="secondary-button" disabled={!cameraReady || recording} onClick={() => {

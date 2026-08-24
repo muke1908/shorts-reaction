@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import type { PipelineConfig, ReactionInstructions, ReactionJobRecord } from "../../shared/types";
+import { providerUserMediaAnonymizer } from "../../shared/reaction-providers";
 import { probeMediaDurationSeconds } from "../media/probe-media";
 
 function expressionDirectionForJob(job: ReactionJobRecord): string {
@@ -13,6 +14,15 @@ function expressionDirectionForJob(job: ReactionJobRecord): string {
 
   if (job.reactionProvider === "user-media") {
     return "Preserve the recorded user reaction faithfully.";
+  }
+
+  const anonymizer = providerUserMediaAnonymizer(job.reactionProvider);
+  if (anonymizer === "sunglasses") {
+    return "Preserve the recorded user reaction faithfully while keeping the sunglasses anonymity overlay intact.";
+  }
+
+  if (anonymizer === "pixelated") {
+    return "Preserve the recorded user reaction faithfully while keeping the face pixelation anonymizer intact.";
   }
 
   return "Use a lightweight synthetic reaction layer that matches the tone of the source.";

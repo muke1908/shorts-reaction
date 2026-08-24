@@ -5,6 +5,10 @@ import type {
   ProcessShortRequest,
   ReactionJobRecord
 } from "../../shared/types";
+import {
+  providerRequiresUserMedia,
+  providerUserMediaAnonymizer
+} from "../../shared/reaction-providers";
 import { OutputVideoCell } from "./OutputVideoCell";
 import { InlineProcessingStageBar } from "../features/processing/InlineProcessingStageBar";
 import { isActiveProcessingStatus, statusLabel } from "../features/processing/stages";
@@ -57,7 +61,7 @@ export const DirectUrlProcessPanel = memo(function DirectUrlProcessPanel({ onPro
       return "Processing...";
     }
 
-    return provider === "user-media" ? "Record + process URL" : "Process URL";
+    return providerRequiresUserMedia(provider) ? "Record + process URL" : "Process URL";
   }, [provider, running]);
 
   async function submit(request: ProcessShortRequest): Promise<void> {
@@ -120,6 +124,8 @@ export const DirectUrlProcessPanel = memo(function DirectUrlProcessPanel({ onPro
           >
             <option value="ai-character">AI character (static)</option>
             <option value="user-media">User media</option>
+            <option value="user-media-sunglasses">User media + sunglasses</option>
+            <option value="user-media-pixelated">User media + pixelated</option>
             <option value="heygen-avatar">HeyGen avatar</option>
           </select>
         </label>
@@ -128,7 +134,7 @@ export const DirectUrlProcessPanel = memo(function DirectUrlProcessPanel({ onPro
           type="button"
           disabled={running || recorderOpen}
           onClick={() => {
-            if (provider === "user-media") {
+              if (providerRequiresUserMedia(provider)) {
               setRecorderOpen(true);
               return;
             }
@@ -142,6 +148,7 @@ export const DirectUrlProcessPanel = memo(function DirectUrlProcessPanel({ onPro
         </button>
       </div>
       <UserMediaRecorder
+        anonymizer={providerUserMediaAnonymizer(provider)}
         open={recorderOpen}
         onCancel={() => {
           setRecorderOpen(false);

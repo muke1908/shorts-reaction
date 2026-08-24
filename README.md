@@ -57,6 +57,7 @@ The deterministic code handles data collection, normalization, eligibility filte
 Current providers:
 
 - **User media provider**: lets you record your own camera clip from the **Process** cell and sends it into the processing pipeline as the reaction layer
+- **User media + sunglasses**: reuses the same user-media path, but applies a live browser-side face-detection sunglasses overlay before the recorded clip is uploaded
 - **AI character**: uses a static server-hosted reaction clip normalized into the lower panel
 - **HeyGen avatar**: prefers the locally authenticated HeyGen CLI/OAuth path, falls back to the raw API-key flow, sends a minimal expression-marker avatar script, and preserves provider audio when present
 
