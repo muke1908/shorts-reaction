@@ -78,11 +78,16 @@ npm run serve
 npm run copilot:scan -- --max-results 10 --serve-ui
 ```
 
-2. Open the UI and click **Process** on a row.
-3. The backend creates a job, downloads the source Short, builds a **9:16** canvas, places the source video in the **top 60%**, fills the **bottom 40%** with a black placeholder panel, and exports the final output while preserving source audio.
-4. The UI polls until the generated video is ready and shows each background stage live:
+2. In the target row’s **Process** section, choose an **Avatar reaction provider**:
+   - **Dummy provider** for a generated placeholder reaction clip
+   - **User media provider** to record yourself with the camera and reuse that recording as the reaction layer
+3. If you choose **User media provider**, click **Process**. The row opens an inline camera recorder.
+4. Record your reaction and click **Stop recording**. The browser releases the camera stream immediately after stopping, and the captured clip is forwarded to the pipeline automatically.
+5. The backend creates a job, downloads the source Short, asks the selected **Avatar Reaction Provider** for a reaction-layer video, builds a **9:16** canvas, places the source video in the **top 60%**, places the provider output in the **bottom 40%**, and exports the final output while preserving available audio. If both the source and provider clip contain audio, both tracks are mixed; if only one side has audio, that stream is kept.
+6. The UI polls until the generated video is ready and shows each background stage live:
    - queued
    - downloading source
+   - rendering reaction layer
    - compositing 9:16 layout
    - export ready / failed
 
@@ -95,5 +100,6 @@ npm run copilot:scan -- --max-results 10 --serve-ui
 | `data/dumps/iterations/*.json` | Timestamped per-scan archived result sets |
 | `data/reports/*.md` | Timestamped markdown scan reports |
 | `data/generated/jobs/<job-id>/manifest.json` | Durable processing status and output metadata |
-| `data/generated/jobs/<job-id>/output.mp4` | Final stacked 9:16 placeholder-layout video |
+| `data/generated/jobs/<job-id>/reaction.mp4` | Generated Avatar Reaction Provider layer used for the bottom panel |
+| `data/generated/jobs/<job-id>/output.mp4` | Final stacked 9:16 two-layer reaction video |
 | `ui-dist/` | Built frontend assets |

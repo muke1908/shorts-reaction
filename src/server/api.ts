@@ -1,4 +1,5 @@
 import express from "express";
+import type { ProcessShortRequest } from "../shared/types";
 import { relative } from "node:path";
 import { runMasterAgent } from "../agents/master-agent";
 import { getCopilotRuntimeStatus, resetCopilotRuntimeStatus } from "../copilot/client";
@@ -54,7 +55,7 @@ function toGeneratedSummary(config: PipelineConfig, record: Awaited<ReturnType<t
 
 export function createApiRouter(config: PipelineConfig): express.Router {
   const router = express.Router();
-  router.use(express.json());
+  router.use(express.json({ limit: "50mb" }));
 
   router.get("/health", (_request, response) => {
     response.json({ ok: true });
@@ -100,14 +101,24 @@ export function createApiRouter(config: PipelineConfig): express.Router {
 
   router.post("/process/:shortId", async (request, response, next) => {
     try {
-      const day = typeof request.body?.day === "string" ? request.body.day : undefined;
+      const body = (request.body ?? {}) as ProcessShortRequest;
+      const day = typeof body.day === "string" ? body.day : undefined;
       const short = await findShortRecord(config.outputDir, request.params.shortId, day);
       if (!short) {
         response.status(404).json({ error: "Short not found in the selected dump." });
         return;
       }
 
-      const job = await startReactionJob(short, day ?? null, config);
+      const reactionProvider = body.reactionProvider ?? "dummy";
+      if (reactionProvider === "user-media" && !body.userMedia?.base64) {
+        response.status(400).json({ error: "Record a user video before using the UserMediaProvider." });
+        return;
+      }
+
+      const job = await startReactionJob(short, day ?? null, {
+        reactionProvider,
+        userMedia: body.userMedia ?? null
+      }, config);
       response.status(202).json(job);
     } catch (error) {
       next(error);

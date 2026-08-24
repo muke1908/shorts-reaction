@@ -1,4 +1,4 @@
-import type { GeneratedVideoSummary, ShortRecord } from "../../shared/types";
+import type { GeneratedVideoSummary, ProcessShortRequest, ShortRecord } from "../../shared/types";
 import { formatDate, formatNumber } from "../lib/format";
 import { OutputVideoCell } from "./OutputVideoCell";
 import { ProcessButton } from "./ProcessButton";
@@ -6,7 +6,7 @@ import { ProcessButton } from "./ProcessButton";
 interface ShortsTableProps {
   records: ShortRecord[];
   processingByShortId: Record<string, GeneratedVideoSummary | null>;
-  onProcess: (record: ShortRecord) => void;
+  onProcess: (record: ShortRecord, request: ProcessShortRequest) => Promise<void>;
 }
 
 export function ShortsTable({ records, processingByShortId, onProcess }: ShortsTableProps): JSX.Element {

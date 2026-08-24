@@ -6,6 +6,8 @@ export interface JobPaths {
   jobDir: string;
   manifestPath: string;
   sourceVideoPath: string;
+  providerInputVideoPath: string;
+  reactionVideoPath: string;
   outputVideoPath: string;
   posterPath: string;
 }
@@ -20,6 +22,8 @@ export function getJobPaths(jobId: string, config: PipelineConfig): JobPaths {
     jobDir,
     manifestPath: resolve(jobDir, "manifest.json"),
     sourceVideoPath: resolve(jobDir, "source.mp4"),
+    providerInputVideoPath: resolve(jobDir, "provider-input.webm"),
+    reactionVideoPath: resolve(jobDir, "reaction.mp4"),
     outputVideoPath: resolve(jobDir, "output.mp4"),
     posterPath: resolve(jobDir, "poster.jpg")
   };

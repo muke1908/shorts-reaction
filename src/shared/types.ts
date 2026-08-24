@@ -1,7 +1,9 @@
 export type SourceKind = "youtube-api" | "youtube-web";
+export type AvatarReactionProviderKind = "dummy" | "user-media";
 export type ProcessingStatus =
   | "pending"
   | "downloading"
+  | "rendering-reaction"
   | "compositing"
   | "completed"
   | "failed";
@@ -169,18 +171,26 @@ export interface CopilotRuntimeStatus {
 
 export interface ProcessShortRequest {
   day?: string;
+  reactionProvider?: AvatarReactionProviderKind;
+  userMedia?: {
+    mimeType: string;
+    base64: string;
+  } | null;
 }
 
 export interface ReactionJobRecord {
   id: string;
   shortId: string;
   requestedDay: string | null;
+  reactionProvider: AvatarReactionProviderKind;
   short: Pick<
     ShortRecord,
     "id" | "title" | "url" | "channel" | "publishedAt" | "captureTimestamp" | "score" | "scoreBreakdown"
   >;
   status: ProcessingStatus;
   sourceVideoPath: string | null;
+  providerInputVideoPath: string | null;
+  reactionVideoPath: string | null;
   outputVideoPath: string | null;
   posterPath: string | null;
   manifestPath: string;

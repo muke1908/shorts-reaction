@@ -19,6 +19,7 @@ async function writeManifest(job: ReactionJobRecord): Promise<void> {
 export async function createReactionJob(
   short: ShortRecord,
   requestedDay: string | null,
+  reactionProvider: ReactionJobRecord["reactionProvider"],
   config: PipelineConfig
 ): Promise<ReactionJobRecord> {
   await mkdir(getJobsRoot(config), { recursive: true });
@@ -30,6 +31,7 @@ export async function createReactionJob(
     id,
     shortId: short.id,
     requestedDay,
+    reactionProvider,
     short: {
       id: short.id,
       title: short.title,
@@ -42,6 +44,8 @@ export async function createReactionJob(
     },
     status: "pending",
     sourceVideoPath: null,
+    providerInputVideoPath: null,
+    reactionVideoPath: null,
     outputVideoPath: null,
     posterPath: null,
     manifestPath: paths.manifestPath,

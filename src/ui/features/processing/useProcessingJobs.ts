@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import type { GeneratedVideoSummary, ReactionJobRecord, ShortRecord } from "../../../shared/types";
+import type {
+  GeneratedVideoSummary,
+  ProcessShortRequest,
+  ReactionJobRecord,
+  ShortRecord
+} from "../../../shared/types";
 import { isActiveProcessingStatus } from "./stages";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -14,7 +19,7 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
 export interface UseProcessingJobsResult {
   processingByShortId: Record<string, GeneratedVideoSummary | null>;
   refreshSummaries: (records: ShortRecord[]) => Promise<void>;
-  startProcessing: (record: ShortRecord) => Promise<void>;
+  startProcessing: (record: ShortRecord, request: ProcessShortRequest) => Promise<void>;
 }
 
 export function useProcessingJobs(
@@ -83,13 +88,13 @@ export function useProcessingJobs(
     return () => window.clearInterval(timer);
   }, [processingByShortId, onError]);
 
-  async function startProcessing(record: ShortRecord): Promise<void> {
+  async function startProcessing(record: ShortRecord, request: ProcessShortRequest): Promise<void> {
     const job = await fetchJson<ReactionJobRecord>(`/api/process/${record.id}`, {
       method: "POST",
       headers: {
         "content-type": "application/json"
       },
-      body: "{}"
+      body: JSON.stringify(request)
     });
 
     setProcessingByShortId((current) => ({

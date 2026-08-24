@@ -29,7 +29,11 @@ export function InlineProcessingStageBar({ summary }: InlineProcessingStageBarPr
 
   return (
     <div className="processing-inline">
-      <div className="processing-inline__segments" aria-label="Processing progress">
+      <div
+        className="processing-inline__segments"
+        aria-label="Processing progress"
+        style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(0, 1fr))` }}
+      >
         {stages.map((stage) => (
           <div
             key={stage.key}

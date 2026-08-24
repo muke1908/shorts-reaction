@@ -35,7 +35,8 @@ The system is organized as six layers:
 7. Copilot CLI reviews candidates using the markdown workflow as its contract and decides keep/drop/rank.
 8. Heuristic metrics remain available as supporting evidence.
 9. JSON dumps and markdown reports are written locally.
-10. If `--serve-ui` is passed, the workflow builds the frontend and starts the local server.
+10. When a Process job runs, the video pipeline downloads the Short, invokes the Avatar Reaction Provider to create a reaction-layer asset, composites both layers, and writes job artifacts locally.
+11. If `--serve-ui` is passed, the workflow builds the frontend and starts the local server.
 
 ## Storage design
 
@@ -63,3 +64,17 @@ The UI is a React + Vite frontend that reads from the Node server:
 - `/api/dump` returns the latest aggregate dump.
 - `/api/scan` triggers a fresh top-10 scan.
 - `/api/process/:shortId` starts a reaction-video job.
+
+## Video processing model
+
+The Process flow is now split into two render layers:
+
+1. **Source layer**: the downloaded YouTube Short, scaled into the top 60% of a 9:16 frame.
+2. **Avatar reaction layer**: a provider-owned video asset rendered for the bottom 40%.
+
+Today the provider is a dummy implementation that creates a synthetic animated clip, but the boundary is explicit in `src/processing/reactions/` so it can be swapped for a future AI/avatar-backed generator without rewriting the compositor contract.
+
+The current provider set is:
+
+- `DummyAvatarReactionProvider` for generated synthetic reaction clips
+- `UserMediaAvatarReactionProvider` for user-recorded camera clips captured in the browser and passed into the pipeline

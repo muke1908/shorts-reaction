@@ -6,6 +6,7 @@ import { formatRelativeDaysAgo } from "./lib/format";
 import type {
   CopilotRuntimeStatus,
   DumpDocument,
+  ProcessShortRequest,
   ShortRecord
 } from "../shared/types";
 
@@ -92,9 +93,9 @@ export function App(): JSX.Element {
     }
   }
 
-  async function handleProcess(record: ShortRecord): Promise<void> {
+  async function handleProcess(record: ShortRecord, request: ProcessShortRequest): Promise<void> {
     setError(null);
-    await startProcessing(record);
+    await startProcessing(record, request);
   }
 
   return (
@@ -103,7 +104,7 @@ export function App(): JSX.Element {
         <p className="eyebrow">Indian politics / YouTube Shorts</p>
         <h1>Virality monitor</h1>
         <p>
-          Run a fresh scan, rank the top 10 likely viral Shorts, archive each scan iteration with its timestamp, and generate stacked 9:16 placeholder-layout videos from the latest list.
+          Run a fresh scan, rank the top 10 likely viral Shorts, archive each scan iteration with its timestamp, and generate stacked 9:16 reaction-layout videos from the latest list.
         </p>
       </header>
       <section className="panel action-bar">
@@ -121,7 +122,6 @@ export function App(): JSX.Element {
           {scanning ? "Scanning..." : "Scan"}
         </button>
       </section>
-
       {loading ? <section className="panel">Loading dump...</section> : null}
       {error ? <section className="panel error">{error}</section> : null}
       {copilotStatus && (copilotStatus.startedAt || copilotStatus.active || copilotStatus.completedInvocations > 0) ? (
@@ -157,11 +157,10 @@ export function App(): JSX.Element {
           <ShortsTable
             records={rankedRecords}
             processingByShortId={processingByShortId}
-            onProcess={(record) => {
-              handleProcess(record).catch((reason: unknown) => {
+            onProcess={(record, request) => handleProcess(record, request).catch((reason: unknown) => {
                 setError(reason instanceof Error ? reason.message : String(reason));
-              });
-            }}
+                throw reason;
+              })}
           />
         </>
       ) : null}

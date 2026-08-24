@@ -29,10 +29,17 @@ This project scans public YouTube Shorts metadata related to Indian politics, ru
 6. Serves a React UI that shows the latest **top 10** results and lets you trigger a fresh scan with one button.
 7. Lets you click **Process** on a ranked Short to start a video-layout job that:
    - downloads the selected Short
+   - asks the selected **Avatar Reaction Provider** for a reaction-layer video
    - creates a **9:16** output canvas
    - places the original Short in the **top 60%**
-   - reserves the **bottom 40%** as a black reaction placeholder
+   - places the provider video in the **bottom 40%**
+   - keeps source audio when present, and carries provider audio through when the selected provider clip includes it
    - writes the generated output video under `data/generated/jobs/`
+
+Current providers:
+
+- **Dummy provider**: generates a synthetic animated reaction clip automatically
+- **User media provider**: lets you record your own camera clip from the **Process** cell and sends it into the processing pipeline as the reaction layer
 
 ## Quickstart
 
@@ -105,6 +112,7 @@ Candidate URLs are normalized to the cleaner Shorts form:
 Generated reaction jobs are stored under:
 
 - `data/generated/jobs/<job-id>/source.mp4`
+- `data/generated/jobs/<job-id>/reaction.mp4`
 - `data/generated/jobs/<job-id>/output.mp4`
 - `data/generated/jobs/<job-id>/manifest.json`
 - `data/generated/jobs/<job-id>/poster.jpg`
