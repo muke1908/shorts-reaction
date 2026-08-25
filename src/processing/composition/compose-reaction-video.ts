@@ -21,6 +21,15 @@ function withBottomPreStartImageOverlay(
   return `[${inputLabel}][${overlayInputIndex}:v]overlay=x=(main_w-overlay_w)/2:y=36:enable='lt(t,${endTimeSeconds.toFixed(3)})'[${outputLabel}]`;
 }
 
+function withTopPosterPrerollOverlay(
+  sourceInputLabel: string,
+  posterInputLabel: string,
+  outputLabel: string,
+  startTimeSeconds: number
+): string {
+  return `[${sourceInputLabel}][${posterInputLabel}]overlay=enable='lt(t,${startTimeSeconds.toFixed(3)})'[${outputLabel}]`;
+}
+
 export async function composeReactionVideo(
   plan: ReactionCompositionPlan,
   outputVideoPath: string,
@@ -65,25 +74,57 @@ export async function composeReactionVideo(
   const reactionPadSeconds = Math.max(0, reactionDisplayDuration - reactionDuration);
   const endingPadSeconds = endVideoPath ? Math.max(0, outputDuration - ((endingStartTime ?? 0) + endingDuration)) : 0;
   const bottomPreStartOverlayImagePath = plan.bottomStart.overlayImageBeforeStartPath ?? null;
+  const needsTopPosterPreroll = sourceStartSeconds > 0;
   const needsBottomPreStartOverlay = bottomPreStartOverlayImagePath !== null && reactionStartSeconds > 0;
   let audioMap: string | null = null;
 
+  if (needsTopPosterPreroll) {
+    await runCommand(config.ffmpegBinary, [
+      "-y",
+      "-i",
+      sourceVideoPath,
+      "-frames:v",
+      "1",
+      posterPath
+    ]).catch((error: unknown) => {
+      if (error instanceof Error && /ENOENT/.test(error.message)) {
+        throw new Error(
+          `Could not find ${config.ffmpegBinary}. Install ffmpeg or set FFMPEG_BINARY so the Process flow can prepare delayed source posters.`
+        );
+      }
+
+      throw error;
+    });
+  }
+
   if (endVideoPath) {
     args.push("-i", endVideoPath);
+    if (needsTopPosterPreroll) {
+      args.push("-loop", "1", "-i", posterPath);
+    }
     if (needsBottomPreStartOverlay) {
       args.push("-loop", "1", "-i", bottomPreStartOverlayImagePath);
     }
     args.push("-filter_complex");
 
-    const bottomOverlayInputIndex = needsBottomPreStartOverlay ? 3 : null;
+    const topPosterInputIndex = needsTopPosterPreroll ? 3 : null;
+    const bottomOverlayInputIndex = needsBottomPreStartOverlay ? (needsTopPosterPreroll ? 4 : 3) : null;
     const bottomMainOutputLabel = bottomOverlayInputIndex !== null ? "bottommainoverlay" : "bottommainbase";
     const bottomMainWithOverlayFilter = bottomOverlayInputIndex !== null
       ? withBottomPreStartImageOverlay("bottommainbase", bottomOverlayInputIndex, "bottommainoverlay", reactionStartSeconds)
       : null;
+    const topBaseOutputLabel = topPosterInputIndex !== null ? "topwithposterbase" : "topvideobase";
+    const topPosterPrerollFilter = topPosterInputIndex !== null
+      ? withTopPosterPrerollOverlay("topvideobase", "topposterimage", "topwithposterbase", sourceStartSeconds)
+      : null;
 
     const videoFilter = [
-      `[0:v]scale=1080:1152:force_original_aspect_ratio=decrease,pad=1080:1152:(ow-iw)/2:(oh-ih)/2:black,tpad=start_duration=${sourceStartSeconds}:start_mode=clone${topFreezeSeconds > 0 ? `:stop_mode=clone:stop_duration=${topFreezeSeconds.toFixed(3)}` : ""}[topbase]`,
-      withPauseOverlay("topbase", "top", `lt(t,${sourceStartSeconds.toFixed(3)})+gte(t,${sourceStopTime.toFixed(3)})`),
+      ...(topPosterInputIndex !== null
+        ? [`[${topPosterInputIndex}:v]scale=1080:1152:force_original_aspect_ratio=decrease,pad=1080:1152:(ow-iw)/2:(oh-ih)/2:black[topposterimage]`]
+        : []),
+      `[0:v]scale=1080:1152:force_original_aspect_ratio=decrease,pad=1080:1152:(ow-iw)/2:(oh-ih)/2:black,tpad=start_duration=${sourceStartSeconds}:start_mode=clone${topFreezeSeconds > 0 ? `:stop_mode=clone:stop_duration=${topFreezeSeconds.toFixed(3)}` : ""}[topvideobase]`,
+      ...(topPosterPrerollFilter ? [topPosterPrerollFilter] : []),
+      withPauseOverlay(topBaseOutputLabel, "top", `lt(t,${sourceStartSeconds.toFixed(3)})+gte(t,${sourceStopTime.toFixed(3)})`),
       `[1:v]scale=1080:768:force_original_aspect_ratio=increase,crop=1080:768,trim=duration=${reactionDisplayDuration.toFixed(3)},setpts=PTS-STARTPTS${reactionPadSeconds > 0 ? `,tpad=stop_mode=clone:stop_duration=${reactionPadSeconds.toFixed(3)}` : ""}${reactionStartSeconds > 0 ? `,tpad=start_duration=${reactionStartSeconds.toFixed(3)}:start_mode=clone` : ""}[bottommainbase]`,
       ...(bottomMainWithOverlayFilter ? [bottomMainWithOverlayFilter] : []),
       withPauseOverlay(bottomMainOutputLabel, "bottommain", `${reactionStartSeconds > 0 ? `lt(t,${reactionStartSeconds.toFixed(3)})+` : ""}gte(t,${(reactionStartSeconds + Math.min(reactionDuration, reactionDisplayDuration)).toFixed(3)})`),
@@ -130,20 +171,32 @@ export async function composeReactionVideo(
       filterComplex = videoFilter;
     }
   } else {
+    if (needsTopPosterPreroll) {
+      args.push("-loop", "1", "-i", posterPath);
+    }
     if (needsBottomPreStartOverlay) {
       args.push("-loop", "1", "-i", bottomPreStartOverlayImagePath);
     }
     args.push("-filter_complex");
 
-    const bottomOverlayInputIndex = needsBottomPreStartOverlay ? 2 : null;
+    const topPosterInputIndex = needsTopPosterPreroll ? 2 : null;
+    const bottomOverlayInputIndex = needsBottomPreStartOverlay ? (needsTopPosterPreroll ? 3 : 2) : null;
     const bottomOutputLabel = bottomOverlayInputIndex !== null ? "bottomoverlay" : "bottombase";
     const bottomWithOverlayFilter = bottomOverlayInputIndex !== null
       ? withBottomPreStartImageOverlay("bottombase", bottomOverlayInputIndex, "bottomoverlay", reactionStartSeconds)
       : null;
+    const topBaseOutputLabel = topPosterInputIndex !== null ? "topwithposterbase" : "topvideobase";
+    const topPosterPrerollFilter = topPosterInputIndex !== null
+      ? withTopPosterPrerollOverlay("topvideobase", "topposterimage", "topwithposterbase", sourceStartSeconds)
+      : null;
 
     const videoFilter = [
-      `[0:v]scale=1080:1152:force_original_aspect_ratio=decrease,pad=1080:1152:(ow-iw)/2:(oh-ih)/2:black,tpad=start_duration=${sourceStartSeconds}:start_mode=clone[topbase]`,
-      withPauseOverlay("topbase", "top", `lt(t,${sourceStartSeconds.toFixed(3)})`),
+      ...(topPosterInputIndex !== null
+        ? [`[${topPosterInputIndex}:v]scale=1080:1152:force_original_aspect_ratio=decrease,pad=1080:1152:(ow-iw)/2:(oh-ih)/2:black[topposterimage]`]
+        : []),
+      `[0:v]scale=1080:1152:force_original_aspect_ratio=decrease,pad=1080:1152:(ow-iw)/2:(oh-ih)/2:black,tpad=start_duration=${sourceStartSeconds}:start_mode=clone[topvideobase]`,
+      ...(topPosterPrerollFilter ? [topPosterPrerollFilter] : []),
+      withPauseOverlay(topBaseOutputLabel, "top", `lt(t,${sourceStartSeconds.toFixed(3)})`),
       `[1:v]scale=1080:768:force_original_aspect_ratio=increase,crop=1080:768${reactionPadSeconds > 0 ? `,tpad=stop_mode=clone:stop_duration=${reactionPadSeconds.toFixed(3)}` : ""}${reactionStartSeconds > 0 ? `,tpad=start_duration=${reactionStartSeconds.toFixed(3)}:start_mode=clone` : ""}[bottombase]`,
       ...(bottomWithOverlayFilter ? [bottomWithOverlayFilter] : []),
       withPauseOverlay(bottomOutputLabel, "bottom", `${reactionStartSeconds > 0 ? `lt(t,${reactionStartSeconds.toFixed(3)})+` : ""}gte(t,${(reactionStartSeconds + reactionDuration).toFixed(3)})`),
