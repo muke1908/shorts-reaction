@@ -4,11 +4,11 @@ import type {
   ReactionCompositionPlan
 } from "../provider";
 import { LocalAvatarReactionProviderAdapter } from "./local-avatar-reaction-provider-adapter";
-import { buildAiCharacterCompositionPlan, createAiCharacterReactionVideo } from "./ai-character-provider";
+import { buildTemplate1CompositionPlan, createTemplate1ReactionVideo } from "./static-template-provider";
 
-export class AiCharacterAvatarReactionProviderAdapter extends LocalAvatarReactionProviderAdapter {
+export class Template1AvatarReactionProviderAdapter extends LocalAvatarReactionProviderAdapter {
   public async submitRender(request: AvatarReactionRequest): Promise<AvatarReactionSubmission> {
-    await createAiCharacterReactionVideo({
+    await createTemplate1ReactionVideo({
       ...request,
       outputVideoPath: request.providerRenderPath
     });
@@ -23,6 +23,6 @@ export class AiCharacterAvatarReactionProviderAdapter extends LocalAvatarReactio
     _submission: AvatarReactionSubmission,
     request: AvatarReactionRequest
   ): Promise<ReactionCompositionPlan> {
-    return buildAiCharacterCompositionPlan(request);
+    return buildTemplate1CompositionPlan(request);
   }
 }

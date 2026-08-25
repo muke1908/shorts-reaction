@@ -87,7 +87,7 @@ function createJob(shortId: string, jobDir: string): ReactionJobRecord {
     id: `job-${randomUUID()}`,
     shortId,
     requestedDay: null,
-    reactionProvider: "ai-character",
+    reactionProvider: "template-1",
     short: {
       id: shortId,
       title: "Title",

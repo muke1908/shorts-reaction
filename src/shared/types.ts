@@ -1,6 +1,7 @@
 export type SourceKind = "youtube-api" | "youtube-web";
 export type AvatarReactionProviderKind =
-  | "ai-character"
+  | "template-1"
+  | "template-2"
   | "user-media"
   | "user-media-sunglasses"
   | "user-media-pixelated";

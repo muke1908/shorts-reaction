@@ -21,7 +21,7 @@ interface ProcessButtonProps {
 
 export const ProcessButton = memo(function ProcessButton({ record, summary, onProcess, onOpenAdvanced }: ProcessButtonProps): JSX.Element {
   const running = summary ? isActiveProcessingStatus(summary.status) : false;
-  const [provider, setProvider] = useState<AvatarReactionProviderKind>("ai-character");
+  const [provider, setProvider] = useState<AvatarReactionProviderKind>("template-1");
   const [localError, setLocalError] = useState<string | null>(null);
 
   async function startPipeline(request: ProcessShortRequest): Promise<void> {

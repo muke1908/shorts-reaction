@@ -12,6 +12,15 @@ function withPauseOverlay(inputLabel: string, outputLabel: string, enableExpress
   ].join(",");
 }
 
+function withBottomPreStartImageOverlay(
+  inputLabel: string,
+  overlayInputIndex: number,
+  outputLabel: string,
+  endTimeSeconds: number
+): string {
+  return `[${inputLabel}][${overlayInputIndex}:v]overlay=x=(main_w-overlay_w)/2:y=36:enable='lt(t,${endTimeSeconds.toFixed(3)})'[${outputLabel}]`;
+}
+
 export async function composeReactionVideo(
   plan: ReactionCompositionPlan,
   outputVideoPath: string,
@@ -21,11 +30,14 @@ export async function composeReactionVideo(
   const sourceVideoPath = plan.top.videoPath;
   const startVideoPath = plan.bottomStart.videoPath;
   const endVideoPath = plan.bottomEnd?.videoPath ?? null;
-  const sourceStartSeconds = plan.top.startTimeSeconds;
-  const reactionStartSeconds = plan.bottomStart.startTimeSeconds;
+  const sourceStartSeconds = plan.top.startTimeSeconds ?? 0;
   const sourceDuration = await probeMediaDurationSeconds(sourceVideoPath, config);
-  const reactionDuration = await probeMediaDurationSeconds(startVideoPath, config);
   const sourceStopTime = sourceDuration + sourceStartSeconds;
+  const reactionStartSeconds = plan.bottomStart.startTimeSeconds
+    ?? (plan.bottomStart.startAtTopEndOffsetSeconds !== undefined
+      ? sourceStopTime + plan.bottomStart.startAtTopEndOffsetSeconds
+      : 0);
+  const reactionDuration = await probeMediaDurationSeconds(startVideoPath, config);
   const endingStartTime = plan.bottomEnd
     ? sourceStopTime + plan.bottomEnd.startAtTopEndOffsetSeconds
     : null;
@@ -52,20 +64,29 @@ export async function composeReactionVideo(
   const reactionDisplayDuration = (endVideoPath ? (endingStartTime ?? outputDuration) : outputDuration) - reactionStartSeconds;
   const reactionPadSeconds = Math.max(0, reactionDisplayDuration - reactionDuration);
   const endingPadSeconds = endVideoPath ? Math.max(0, outputDuration - ((endingStartTime ?? 0) + endingDuration)) : 0;
+  const bottomPreStartOverlayImagePath = plan.bottomStart.overlayImageBeforeStartPath ?? null;
+  const needsBottomPreStartOverlay = bottomPreStartOverlayImagePath !== null && reactionStartSeconds > 0;
   let audioMap: string | null = null;
 
   if (endVideoPath) {
-    args.push(
-      "-i",
-      endVideoPath,
-      "-filter_complex"
-    );
+    args.push("-i", endVideoPath);
+    if (needsBottomPreStartOverlay) {
+      args.push("-loop", "1", "-i", bottomPreStartOverlayImagePath);
+    }
+    args.push("-filter_complex");
+
+    const bottomOverlayInputIndex = needsBottomPreStartOverlay ? 3 : null;
+    const bottomMainOutputLabel = bottomOverlayInputIndex !== null ? "bottommainoverlay" : "bottommainbase";
+    const bottomMainWithOverlayFilter = bottomOverlayInputIndex !== null
+      ? withBottomPreStartImageOverlay("bottommainbase", bottomOverlayInputIndex, "bottommainoverlay", reactionStartSeconds)
+      : null;
 
     const videoFilter = [
       `[0:v]scale=1080:1152:force_original_aspect_ratio=decrease,pad=1080:1152:(ow-iw)/2:(oh-ih)/2:black,tpad=start_duration=${sourceStartSeconds}:start_mode=clone${topFreezeSeconds > 0 ? `:stop_mode=clone:stop_duration=${topFreezeSeconds.toFixed(3)}` : ""}[topbase]`,
       withPauseOverlay("topbase", "top", `lt(t,${sourceStartSeconds.toFixed(3)})+gte(t,${sourceStopTime.toFixed(3)})`),
       `[1:v]scale=1080:768:force_original_aspect_ratio=increase,crop=1080:768,trim=duration=${reactionDisplayDuration.toFixed(3)},setpts=PTS-STARTPTS${reactionPadSeconds > 0 ? `,tpad=stop_mode=clone:stop_duration=${reactionPadSeconds.toFixed(3)}` : ""}${reactionStartSeconds > 0 ? `,tpad=start_duration=${reactionStartSeconds.toFixed(3)}:start_mode=clone` : ""}[bottommainbase]`,
-      withPauseOverlay("bottommainbase", "bottommain", `${reactionStartSeconds > 0 ? `lt(t,${reactionStartSeconds.toFixed(3)})+` : ""}gte(t,${(reactionStartSeconds + Math.min(reactionDuration, reactionDisplayDuration)).toFixed(3)})`),
+      ...(bottomMainWithOverlayFilter ? [bottomMainWithOverlayFilter] : []),
+      withPauseOverlay(bottomMainOutputLabel, "bottommain", `${reactionStartSeconds > 0 ? `lt(t,${reactionStartSeconds.toFixed(3)})+` : ""}gte(t,${(reactionStartSeconds + Math.min(reactionDuration, reactionDisplayDuration)).toFixed(3)})`),
       `[2:v]scale=1080:768:force_original_aspect_ratio=decrease,pad=1080:768:(ow-iw)/2:(oh-ih)/2:black,setpts=PTS-STARTPTS${endingPadSeconds > 0 ? `,tpad=stop_mode=clone:stop_duration=${endingPadSeconds.toFixed(3)}` : ""}[bottomending]`,
       "[bottommain][bottomending]concat=n=2:v=1:a=0[bottom]",
       "[top][bottom]vstack=inputs=2[v]"
@@ -109,13 +130,23 @@ export async function composeReactionVideo(
       filterComplex = videoFilter;
     }
   } else {
+    if (needsBottomPreStartOverlay) {
+      args.push("-loop", "1", "-i", bottomPreStartOverlayImagePath);
+    }
     args.push("-filter_complex");
+
+    const bottomOverlayInputIndex = needsBottomPreStartOverlay ? 2 : null;
+    const bottomOutputLabel = bottomOverlayInputIndex !== null ? "bottomoverlay" : "bottombase";
+    const bottomWithOverlayFilter = bottomOverlayInputIndex !== null
+      ? withBottomPreStartImageOverlay("bottombase", bottomOverlayInputIndex, "bottomoverlay", reactionStartSeconds)
+      : null;
 
     const videoFilter = [
       `[0:v]scale=1080:1152:force_original_aspect_ratio=decrease,pad=1080:1152:(ow-iw)/2:(oh-ih)/2:black,tpad=start_duration=${sourceStartSeconds}:start_mode=clone[topbase]`,
       withPauseOverlay("topbase", "top", `lt(t,${sourceStartSeconds.toFixed(3)})`),
       `[1:v]scale=1080:768:force_original_aspect_ratio=increase,crop=1080:768${reactionPadSeconds > 0 ? `,tpad=stop_mode=clone:stop_duration=${reactionPadSeconds.toFixed(3)}` : ""}${reactionStartSeconds > 0 ? `,tpad=start_duration=${reactionStartSeconds.toFixed(3)}:start_mode=clone` : ""}[bottombase]`,
-      withPauseOverlay("bottombase", "bottom", `${reactionStartSeconds > 0 ? `lt(t,${reactionStartSeconds.toFixed(3)})+` : ""}gte(t,${(reactionStartSeconds + reactionDuration).toFixed(3)})`),
+      ...(bottomWithOverlayFilter ? [bottomWithOverlayFilter] : []),
+      withPauseOverlay(bottomOutputLabel, "bottom", `${reactionStartSeconds > 0 ? `lt(t,${reactionStartSeconds.toFixed(3)})+` : ""}gte(t,${(reactionStartSeconds + reactionDuration).toFixed(3)})`),
       "[top][bottom]vstack=inputs=2[v]"
     ].join(";");
 

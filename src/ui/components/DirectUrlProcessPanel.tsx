@@ -30,7 +30,7 @@ async function fetchJson<T>(path: string): Promise<T> {
 
 export const DirectUrlProcessPanel = memo(function DirectUrlProcessPanel({ onProcessUrl, onOpenAdvanced }: DirectUrlProcessPanelProps): JSX.Element {
   const [sourceUrl, setSourceUrl] = useState("");
-  const [provider, setProvider] = useState<AvatarReactionProviderKind>("ai-character");
+  const [provider, setProvider] = useState<AvatarReactionProviderKind>("template-1");
   const [summary, setSummary] = useState<GeneratedVideoSummary | null>(null);
   const [trackedShortId, setTrackedShortId] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);

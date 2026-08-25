@@ -1,10 +1,14 @@
 import { access, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { PipelineConfig } from "../../../shared/types";
 import type { AvatarReactionRequest, ReactionCompositionPlan } from "../provider";
 import { normalizeReactionVideo } from "./normalize-reaction-video";
 
 const STATIC_ASSET_EXTENSIONS = [".mp4", ".mov", ".webm", ".mkv"] as const;
+const TEMPLATE_2_OVERLAY_IMAGE_PATH = fileURLToPath(
+  new URL("../../assets/template-2-wait-for-the-end.png", import.meta.url)
+);
 
 async function pathExists(path: string): Promise<boolean> {
   try {
@@ -15,7 +19,7 @@ async function pathExists(path: string): Promise<boolean> {
   }
 }
 
-export async function resolveOptionalAiCharacterStaticAssetPath(
+export async function resolveOptionalStaticTemplateAssetPath(
   config: PipelineConfig,
   baseName: string
 ): Promise<string | null> {
@@ -30,9 +34,23 @@ export async function resolveOptionalAiCharacterStaticAssetPath(
   return null;
 }
 
-export async function resolveAiCharacterStaticAssetPath(config: PipelineConfig): Promise<string> {
+export async function resolveRequiredStaticTemplateAssetPath(
+  config: PipelineConfig,
+  baseName: string
+): Promise<string> {
+  const assetPath = await resolveOptionalStaticTemplateAssetPath(config, baseName);
+  if (assetPath) {
+    return assetPath;
+  }
+
+  throw new Error(
+    `Could not find ${baseName}.mp4 (or .mov/.webm/.mkv) in ${config.aiCharacterAssetDir}.`
+  );
+}
+
+export async function resolveTemplate1StaticAssetPath(config: PipelineConfig): Promise<string> {
   const directory = config.aiCharacterAssetDir;
-  const startPath = await resolveOptionalAiCharacterStaticAssetPath(config, "start");
+  const startPath = await resolveOptionalStaticTemplateAssetPath(config, "start");
   if (startPath) {
     return startPath;
   }
@@ -52,19 +70,28 @@ export async function resolveAiCharacterStaticAssetPath(config: PipelineConfig):
   );
 }
 
-export async function createAiCharacterReactionVideo({
+export async function createTemplate1ReactionVideo({
   job: _job,
   outputVideoPath,
   config
 }: AvatarReactionRequest): Promise<void> {
-  const inputVideoPath = await resolveAiCharacterStaticAssetPath(config);
-  await normalizeReactionVideo(inputVideoPath, outputVideoPath, config, "AI character static provider");
+  const inputVideoPath = await resolveTemplate1StaticAssetPath(config);
+  await normalizeReactionVideo(inputVideoPath, outputVideoPath, config, "Template-1 static provider");
 }
 
-export async function buildAiCharacterCompositionPlan(
+export async function createTemplate2ReactionVideo({
+  job: _job,
+  outputVideoPath,
+  config
+}: AvatarReactionRequest): Promise<void> {
+  const inputVideoPath = await resolveRequiredStaticTemplateAssetPath(config, "end");
+  await normalizeReactionVideo(inputVideoPath, outputVideoPath, config, "Template-2 static provider");
+}
+
+export async function buildTemplate1CompositionPlan(
   request: AvatarReactionRequest
 ): Promise<ReactionCompositionPlan> {
-  const endVideoPath = await resolveOptionalAiCharacterStaticAssetPath(request.config, "end");
+  const endVideoPath = await resolveOptionalStaticTemplateAssetPath(request.config, "end");
 
   return {
     top: {
@@ -81,5 +108,22 @@ export async function buildAiCharacterCompositionPlan(
           startAtTopEndOffsetSeconds: -1
         }
       : null
+  };
+}
+
+export function buildTemplate2CompositionPlan(
+  request: AvatarReactionRequest
+): ReactionCompositionPlan {
+  return {
+    top: {
+      videoPath: request.sourceVideoPath,
+      startTimeSeconds: 0
+    },
+    bottomStart: {
+      videoPath: request.outputVideoPath,
+      startAtTopEndOffsetSeconds: -1,
+      overlayImageBeforeStartPath: TEMPLATE_2_OVERLAY_IMAGE_PATH
+    },
+    bottomEnd: null
   };
 }

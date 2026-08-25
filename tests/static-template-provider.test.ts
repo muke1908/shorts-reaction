@@ -4,8 +4,13 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import type { PipelineConfig } from "../src/shared/types";
-import { buildAiCharacterCompositionPlan, resolveAiCharacterStaticAssetPath } from "../src/processing/reactions/providers/ai-character-provider";
+import {
+  buildTemplate1CompositionPlan,
+  buildTemplate2CompositionPlan,
+  resolveTemplate1StaticAssetPath
+} from "../src/processing/reactions/providers/static-template-provider";
 
 function createConfig(baseDir: string): PipelineConfig {
   return {
@@ -31,38 +36,38 @@ function createConfig(baseDir: string): PipelineConfig {
   };
 }
 
-test("resolveAiCharacterStaticAssetPath prefers the start asset", async () => {
+test("resolveTemplate1StaticAssetPath prefers the start asset", async () => {
   const baseDir = join(tmpdir(), `avatar-ai-character-${randomUUID()}`);
   const config = createConfig(baseDir);
 
   await mkdir(config.aiCharacterAssetDir, { recursive: true });
   await writeFile(join(config.aiCharacterAssetDir, "start.mp4"), "fallback");
 
-  const path = await resolveAiCharacterStaticAssetPath(config);
+  const path = await resolveTemplate1StaticAssetPath(config);
 
   assert.equal(path, join(config.aiCharacterAssetDir, "start.mp4"));
 });
 
-test("resolveAiCharacterStaticAssetPath falls back to the first supported asset", async () => {
+test("resolveTemplate1StaticAssetPath falls back to the first supported asset", async () => {
   const baseDir = join(tmpdir(), `avatar-ai-character-${randomUUID()}`);
   const config = createConfig(baseDir);
 
   await mkdir(config.aiCharacterAssetDir, { recursive: true });
   await writeFile(join(config.aiCharacterAssetDir, "ambient.webm"), "fallback");
 
-  const path = await resolveAiCharacterStaticAssetPath(config);
+  const path = await resolveTemplate1StaticAssetPath(config);
 
   assert.equal(path, join(config.aiCharacterAssetDir, "ambient.webm"));
 });
 
-test("buildAiCharacterCompositionPlan wires source, start, and optional end timing", async () => {
+test("buildTemplate1CompositionPlan wires source, start, and optional end timing", async () => {
   const baseDir = join(tmpdir(), `avatar-ai-character-${randomUUID()}`);
   const config = createConfig(baseDir);
 
   await mkdir(config.aiCharacterAssetDir, { recursive: true });
   await writeFile(join(config.aiCharacterAssetDir, "end.mp4"), "ending");
 
-  const plan = await buildAiCharacterCompositionPlan({
+  const plan = await buildTemplate1CompositionPlan({
     job: {} as never,
     sourceVideoPath: "/tmp/source.mp4",
     providerRenderPath: "/tmp/provider-render.mp4",
@@ -83,5 +88,30 @@ test("buildAiCharacterCompositionPlan wires source, start, and optional end timi
       videoPath: join(config.aiCharacterAssetDir, "end.mp4"),
       startAtTopEndOffsetSeconds: -1
     }
+  });
+});
+
+test("buildTemplate2CompositionPlan starts the bottom clip one second before the top ends", () => {
+  const plan = buildTemplate2CompositionPlan({
+    job: {} as never,
+    sourceVideoPath: "/tmp/source.mp4",
+    providerRenderPath: "/tmp/provider-render.mp4",
+    outputVideoPath: "/tmp/reaction.mp4",
+    config: {} as never
+  });
+
+  assert.deepEqual(plan, {
+    top: {
+      videoPath: "/tmp/source.mp4",
+      startTimeSeconds: 0
+    },
+    bottomStart: {
+      videoPath: "/tmp/reaction.mp4",
+      startAtTopEndOffsetSeconds: -1,
+      overlayImageBeforeStartPath: fileURLToPath(
+        new URL("../src/processing/assets/template-2-wait-for-the-end.png", import.meta.url)
+      )
+    },
+    bottomEnd: null
   });
 });

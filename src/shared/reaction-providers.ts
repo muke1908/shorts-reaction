@@ -8,9 +8,14 @@ export interface ReactionProviderOption {
 
 export const REACTION_PROVIDER_OPTIONS: ReactionProviderOption[] = [
   {
-    value: "ai-character",
-    label: "AI character (static)",
-    description: "Generate a provider-led reaction clip without recording yourself."
+    value: "template-1",
+    label: "Template-1",
+    description: "Static template with the source delayed on top, start clip below, and optional end outro."
+  },
+  {
+    value: "template-2",
+    label: "Template-2",
+    description: "Static template with the source on top and the end clip driving the full bottom lane."
   },
   {
     value: "user-media",

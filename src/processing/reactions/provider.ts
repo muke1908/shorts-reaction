@@ -1,5 +1,6 @@
 import type { AvatarReactionProviderKind, PipelineConfig, ReactionJobRecord } from "../../shared/types";
-import { AiCharacterAvatarReactionProviderAdapter } from "./providers/ai-character-provider-adapter";
+import { Template1AvatarReactionProviderAdapter } from "./providers/template-1-provider-adapter";
+import { Template2AvatarReactionProviderAdapter } from "./providers/template-2-provider-adapter";
 import { UserMediaAvatarReactionProviderAdapter } from "./providers/user-media-provider-adapter";
 
 export interface AvatarReactionRequest {
@@ -12,7 +13,9 @@ export interface AvatarReactionRequest {
 
 export interface ReactionCompositionTrackPlan {
   videoPath: string;
-  startTimeSeconds: number;
+  startTimeSeconds?: number;
+  startAtTopEndOffsetSeconds?: number;
+  overlayImageBeforeStartPath?: string | null;
 }
 
 export interface ReactionCompositionEndTrackPlan {
@@ -46,8 +49,10 @@ export function getAvatarReactionProvider(kind: AvatarReactionProviderKind): Ava
     case "user-media-sunglasses":
     case "user-media-pixelated":
       return new UserMediaAvatarReactionProviderAdapter();
-    case "ai-character":
+    case "template-2":
+      return new Template2AvatarReactionProviderAdapter();
+    case "template-1":
     default:
-      return new AiCharacterAvatarReactionProviderAdapter();
+      return new Template1AvatarReactionProviderAdapter();
   }
 }

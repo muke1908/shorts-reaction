@@ -172,7 +172,7 @@ export function createApiRouter(config: PipelineConfig): express.Router {
         return;
       }
 
-      const reactionProvider = body.reactionProvider ?? "ai-character";
+      const reactionProvider = body.reactionProvider ?? "template-1";
       if (providerRequiresUserMedia(reactionProvider) && !body.userMedia?.base64) {
         response.status(400).json({ error: "Record a user video before using this provider." });
         return;
@@ -197,7 +197,7 @@ export function createApiRouter(config: PipelineConfig): express.Router {
         return;
       }
 
-      const reactionProvider = body.reactionProvider ?? "ai-character";
+      const reactionProvider = body.reactionProvider ?? "template-1";
       if (providerRequiresUserMedia(reactionProvider) && !body.userMedia?.base64) {
         response.status(400).json({ error: "Record a user video before using this provider." });
         return;

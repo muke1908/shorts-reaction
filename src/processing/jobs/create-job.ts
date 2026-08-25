@@ -39,7 +39,7 @@ export async function startReactionJob(
   if (
     existing &&
     existing.reactionProvider === options.reactionProvider &&
-    options.reactionProvider === "ai-character" &&
+    !providerRequiresUserMedia(options.reactionProvider) &&
     ["pending", "downloading", "preparing-reaction", "rendering-reaction", "compositing"].includes(existing.status)
   ) {
     return existing;

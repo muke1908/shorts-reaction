@@ -35,7 +35,7 @@ function createJobRecord(jobDir: string, sourceVideoPath: string | null, created
     id: `job-${randomUUID()}`,
     shortId: "short-1",
     requestedDay: "2026-08-24",
-    reactionProvider: "ai-character",
+    reactionProvider: "template-1",
     short: {
       id: "short-1",
       title: "Title",

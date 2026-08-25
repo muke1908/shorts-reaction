@@ -89,7 +89,8 @@ Current processing providers:
 
 | Provider | What it does |
 | --- | --- |
-| **AI character (static)** | Reuses a local server-hosted reaction clip from `data/static/ai-character` |
+| **Template-1** | Reuses `start.*` from `data/static/ai-character`, delays the source on top, and can append `end.*` as the bottom outro |
+| **Template-2** | Reuses `end.*` from `data/static/ai-character` as the full bottom lane while the source plays on top from the start |
 | **User media** | Opens the advanced recorder and uses your captured stage output as the lower reaction layer |
 | **User media + sunglasses** | Uses the same browser recorder with a live sunglasses anonymizer |
 | **User media + pixelated** | Uses the same browser recorder with a pixelation anonymizer |
@@ -100,12 +101,12 @@ When a processing job runs, the backend:
 1. downloads the source Short
 2. asks the selected provider for a reaction-layer video
 3. composites a **9:16** output with the source on top and the reaction on the bottom
-4. starts the reaction layer immediately
-5. delays the source playback by **4 seconds**
+4. applies the selected template's timing plan
+5. preserves each static template asset's aspect ratio inside the bottom lane
 6. preserves available audio and mixes tracks when both sides contain audio
 7. writes job artifacts under `data/generated/jobs/`
 
-If `data/static/ai-character/end.mp4` exists, the composition also supports the optional outro flow used by the static AI-character provider.
+If `data/static/ai-character/end.mp4` exists, template-1 also supports an optional bottom-lane outro flow.
 
 Use this surface when the goal is: **Find interesting Shorts, rank what matters, and generate reaction-ready outputs from the resulting library.**
 
