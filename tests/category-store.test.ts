@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
-import type { ShortRecord } from "../src/shared/types";
+import type { SentimentLabel, ShortRecord } from "../src/shared/types";
 import {
   DIRECT_IMPORTS_CATEGORY_NAME,
   DIRECT_IMPORTS_CATEGORY_SLUG,
@@ -46,6 +46,26 @@ function createRecord(id: string, captureTimestamp: string): ShortRecord {
       reasons: []
     },
     source: "youtube-web"
+  };
+}
+
+function createSentimentRecord(id: string, captureTimestamp: string, label: SentimentLabel): ShortRecord {
+  return {
+    ...createRecord(id, captureTimestamp),
+    llmReview: {
+      keep: true,
+      relevant: true,
+      spam: false,
+      viralityScore: 88,
+      confidence: 0.91,
+      reason: "Strong engagement and clear relevance.",
+      evidenceSummary: "Picked as a strong sample for category regrouping.",
+      sentiment: {
+        label,
+        confidence: 0.82,
+        reason: `Tone reads as ${label}.`
+      }
+    }
   };
 }
 
@@ -120,6 +140,8 @@ test("rewriteSemanticCategoryDumps can split an old broad category into new topi
 
   const groups: RecategorizedCategory[] = [
     {
+      parentCategorySlug: "politics",
+      parentCategoryName: "Politics",
       slug: "political-party",
       name: "Political party",
       reason: "Party and election videos belong together.",
@@ -130,6 +152,8 @@ test("rewriteSemanticCategoryDumps can split an old broad category into new topi
       ]
     },
     {
+      parentCategorySlug: "politics",
+      parentCategoryName: "Politics",
       slug: "political-abortion",
       name: "Political abortion",
       reason: "Abortion policy debate is a distinct topic cluster.",
@@ -164,5 +188,76 @@ test("rewriteSemanticCategoryDumps can split an old broad category into new topi
   assert.deepEqual(
     categoryIndex.categories.map((category) => category.slug).sort(),
     ["direct-imports", "political-abortion", "political-party"]
+  );
+});
+
+test("rewriteSemanticCategoryDumps persists parent hierarchy and sentiment summary", async () => {
+  const outputDir = join(tmpdir(), `avatar-category-${randomUUID()}`);
+  const groups: RecategorizedCategory[] = [
+    {
+      parentCategorySlug: "politics",
+      parentCategoryName: "Politics",
+      slug: "elections",
+      name: "Elections",
+      reason: "Election clips belong in the politics hierarchy.",
+      touchedByCurrentScan: true,
+      records: [
+        createSentimentRecord("election-1", "2026-08-24T00:01:00.000Z", "negative"),
+        createSentimentRecord("election-2", "2026-08-24T00:02:00.000Z", "negative"),
+        createSentimentRecord("election-3", "2026-08-24T00:03:00.000Z", "neutral")
+      ]
+    }
+  ];
+
+  await rewriteSemanticCategoryDumps(outputDir, groups, {
+    generatedAt: "2026-08-24T00:10:00.000Z",
+    latestQuery: "indian election debate"
+  });
+
+  const dump = JSON.parse(await readFile(join(outputDir, "categories", "elections.json"), "utf8")) as {
+    metadata: { parentCategorySlug: string | null; parentCategoryName: string | null };
+  };
+  const categoryIndex = JSON.parse(await readFile(join(outputDir, "categories", "index.json"), "utf8")) as {
+    categories: Array<{
+      slug: string;
+      parentCategorySlug: string | null;
+      parentCategoryName: string | null;
+      dominantSentiment: string | null;
+      sentimentTotals: Record<string, number>;
+    }>;
+  };
+
+  assert.equal(dump.metadata.parentCategorySlug, "politics");
+  assert.equal(dump.metadata.parentCategoryName, "Politics");
+  assert.equal(categoryIndex.categories[0]?.slug, "elections");
+  assert.equal(categoryIndex.categories[0]?.parentCategorySlug, "politics");
+  assert.equal(categoryIndex.categories[0]?.parentCategoryName, "Politics");
+  assert.equal(categoryIndex.categories[0]?.dominantSentiment, "negative");
+  assert.deepEqual(categoryIndex.categories[0]?.sentimentTotals, {
+    positive: 0,
+    negative: 2,
+    neutral: 1,
+    mixed: 0
+  });
+});
+
+test("rewriteSemanticCategoryDumps rejects more than 10 semantic categories", async () => {
+  const outputDir = join(tmpdir(), `avatar-category-${randomUUID()}`);
+  const groups: RecategorizedCategory[] = Array.from({ length: 11 }, (_, index) => ({
+    parentCategorySlug: "politics",
+    parentCategoryName: "Politics",
+    slug: `topic-${index + 1}`,
+    name: `Topic ${index + 1}`,
+    reason: "Test category",
+    touchedByCurrentScan: true,
+    records: [createRecord(`video-${index + 1}`, `2026-08-24T00:0${Math.min(index, 9)}:00.000Z`)]
+  }));
+
+  await assert.rejects(
+    () => rewriteSemanticCategoryDumps(outputDir, groups, {
+      generatedAt: "2026-08-24T00:10:00.000Z",
+      latestQuery: "indian politics"
+    }),
+    /semantic category limit is 10|limit is 10|Refusing to write 11 semantic categories/
   );
 });

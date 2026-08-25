@@ -52,6 +52,8 @@ export async function writeDumps(
     ...metadata,
     itemCount: records.length,
     outputFiles: [],
+    parentCategorySlug: recategorization.primaryParentCategorySlug,
+    parentCategoryName: recategorization.primaryParentCategoryName,
     sourceStrategy: "hybrid"
   };
 

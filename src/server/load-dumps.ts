@@ -3,13 +3,39 @@ import { resolve } from "node:path";
 import type { CategoryIndexDocument, DumpDocument, ShortRecord } from "../shared/types";
 import { loadCategoryDump, loadCategoryIndex } from "./category-store";
 
+function createEmptyDump(): DumpDocument {
+  const timestamp = new Date().toISOString();
+  return {
+    generatedAt: timestamp,
+    requestedDay: null,
+    records: [],
+    metadata: {
+      startedAt: timestamp,
+      completedAt: timestamp,
+      keywordSeeds: [],
+      scanQuery: null,
+      parentCategorySlug: null,
+      parentCategoryName: null,
+      sourceStrategy: "hybrid",
+      usedFallback: false,
+      itemCount: 0,
+      outputFiles: [],
+      workflowFiles: []
+    }
+  };
+}
+
 async function readJson(path: string): Promise<DumpDocument> {
   const raw = await readFile(path, "utf8");
   return JSON.parse(raw) as DumpDocument;
 }
 
 export async function loadLatestDump(outputDir: string): Promise<DumpDocument> {
-  return readJson(resolve(outputDir, "latest.json"));
+  try {
+    return await readJson(resolve(outputDir, "latest.json"));
+  } catch {
+    return createEmptyDump();
+  }
 }
 
 export async function loadDumpByDay(outputDir: string, day: string): Promise<DumpDocument> {

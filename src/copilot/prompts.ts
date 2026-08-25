@@ -78,8 +78,10 @@ export function buildCandidateReviewPrompt(
     "- confidence (0-1 number)",
     "- reason (short string)",
     "- evidenceSummary (short string)",
+    "- sentiment { label: positive|negative|neutral|mixed, confidence: 0-1, reason: short string }",
     "",
     "Use the markdown workflow and ranking rubric above as the source of truth.",
+    "Sentiment should describe the emotional or rhetorical tone of the short itself, not whether you personally agree with it.",
     "",
     candidates
       .map((candidate, index) => `## Candidate ${index + 1}\n${summarizeCandidate(candidate.item, candidate.heuristicScore, candidate.matchedKeywords)}`)
@@ -115,6 +117,7 @@ function summarizeLibraryRecord(
   record: ShortRecord,
   options: {
     currentCategoryName?: string | null;
+    parentCategoryName?: string | null;
     fromCurrentScan: boolean;
   }
 ): string {
@@ -122,6 +125,7 @@ function summarizeLibraryRecord(
   return [
     `id: ${record.id}`,
     `fromCurrentScan: ${options.fromCurrentScan}`,
+    `topLevelCategory: ${options.parentCategoryName ?? "none"}`,
     `currentCategory: ${options.currentCategoryName ?? "none"}`,
     `title: ${record.title}`,
     `channel: ${record.channel}`,
@@ -129,7 +133,8 @@ function summarizeLibraryRecord(
     `keywordSeed: ${record.keywordSeed}`,
     `publishedAt: ${record.publishedAt}`,
     `views: ${record.views ?? "unknown"}`,
-    `score: ${record.score}`
+    `score: ${record.score}`,
+    `sentiment: ${record.llmReview?.sentiment ? `${record.llmReview.sentiment.label} (${record.llmReview.sentiment.confidence.toFixed(2)})` : "unknown"}`
   ].join("\n");
 }
 
@@ -143,36 +148,46 @@ export function buildCategoryRegroupPrompt(
     ...currentRecords.map((record) => ({
       record,
       currentCategoryName: null,
+      parentCategoryName: null,
       fromCurrentScan: true
     })),
     ...existingRecords
       .filter(({ record }) => !currentIds.has(record.id))
-      .map(({ record, categoryName }) => ({
+      .map(({ record, categoryName, parentCategoryName }) => ({
         record,
         currentCategoryName: categoryName,
+        parentCategoryName,
         fromCurrentScan: false
       }))
   ];
 
   return [
     "Rebuild the semantic category list for this YouTube Shorts library.",
-    "You may reuse, rename, split, merge, or delete existing semantic categories.",
+    "Build a two-level category hierarchy for this YouTube Shorts library.",
+    "Each result category must have:",
+    "- a broad top-level parent bucket",
+    "- a more specific child topic category nested under that bucket",
+    "You may reuse, rename, split, merge, or delete existing semantic child categories.",
     "Do not preserve a broad umbrella category if it mixes clearly distinct subtopics.",
     "If two groups are about different political subtopics, separate them into different categories.",
     "For example, party/election videos and abortion-policy videos should not be forced into the same category just because both are political.",
     "Category names should be short, human-readable, and specific enough to distinguish real topical clusters.",
+    "Top-level parent buckets should stay broad, such as Politics, Sports, Entertainment, Tech, Business, World, Lifestyle, Culture, Science, or Other.",
+    "Prefer reusing those broad parent buckets instead of inventing new ones unless the data clearly demands it.",
     "Prefer 1 to 4 words. Avoid vague buckets like General or Mixed when a clearer topic exists.",
+    "Return no more than 10 semantic categories total.",
+    "If you find more than 10 possible clusters, merge the closest compatible ones so the final result still stays specific but does not exceed 10 categories.",
     "Every record id must appear exactly once in the output.",
     "Only categorize the records provided below. Ignore the system category for direct imports; it is managed separately.",
     "",
     `Current scan query: ${scanQuery}`,
-    `Existing semantic categories: ${existingRecords.length > 0 ? Array.from(new Set(existingRecords.map((entry) => entry.categoryName))).join(", ") : "none"}`,
+    `Existing semantic categories: ${existingRecords.length > 0 ? Array.from(new Set(existingRecords.map((entry) => `${entry.parentCategoryName ?? "Other"} > ${entry.categoryName}`))).join(", ") : "none"}`,
     "",
     allRecords
       .map((entry, index) => `## Record ${index + 1}\n${summarizeLibraryRecord(entry.record, entry)}`)
       .join("\n\n"),
     "",
-    "Return strict JSON with shape {\"categories\":[{\"name\":\"...\",\"reason\":\"...\",\"ids\":[\"id1\",\"id2\"]}]}."
+    "Return strict JSON with shape {\"categories\":[{\"parentCategoryName\":\"...\",\"name\":\"...\",\"reason\":\"...\",\"ids\":[\"id1\",\"id2\"]}]}."
   ].join("\n");
 }
 

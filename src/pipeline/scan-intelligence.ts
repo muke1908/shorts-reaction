@@ -11,6 +11,8 @@ import type {
 } from "../shared/types";
 import type { WorkflowBundle } from "../agents/workflow-loader";
 
+const MAX_SEMANTIC_CATEGORIES = 10;
+
 function normalizeSearchPlan(response: CopilotSearchPlanResponse): ScanSearchPlan {
   const searchQueries = Array.from(new Set(
     (response.searchQueries ?? [])
@@ -60,6 +62,10 @@ export async function recategorizeLibrary(
     throw new Error("Copilot did not return any categories for the current library regrouping.");
   }
 
+  if (response.categories.length > MAX_SEMANTIC_CATEGORIES) {
+    throw new Error(`Copilot returned ${response.categories.length} categories. The semantic category limit is ${MAX_SEMANTIC_CATEGORIES}.`);
+  }
+
   const currentIds = new Set(currentRecords.map((record) => record.id));
   const combined = new Map<string, ShortRecord>();
   for (const entry of existingRecords) {
@@ -71,7 +77,11 @@ export async function recategorizeLibrary(
 
   const assignedIds = new Set<string>();
   const categories = response.categories.map((category) => {
+    const parentCategoryName = category.parentCategoryName?.trim();
     const name = category.name?.trim();
+    if (!parentCategoryName) {
+      throw new Error("Copilot returned a category without a valid top-level parent category.");
+    }
     if (!name) {
       throw new Error("Copilot returned a category without a valid name.");
     }
@@ -94,7 +104,9 @@ export async function recategorizeLibrary(
     });
 
     return {
-      slug: slugifyCategoryName(name),
+      parentCategorySlug: slugifyCategoryName(parentCategoryName),
+      parentCategoryName,
+      slug: slugifyCategoryName(`${parentCategoryName}-${name}`),
       name,
       reason: category.reason?.trim() || "No categorization reason provided.",
       records,
@@ -109,17 +121,27 @@ export async function recategorizeLibrary(
   }
 
   const touchedCategories = categories.filter((category) => category.touchedByCurrentScan);
+  const touchedParentCategories = Array.from(new Map(
+    touchedCategories.map((category) => [category.parentCategorySlug, {
+      slug: category.parentCategorySlug,
+      name: category.parentCategoryName
+    }])
+  ).values());
   if (touchedCategories.length === 1) {
     return {
       categories,
       primaryCategorySlug: touchedCategories[0]?.slug ?? null,
-      primaryCategoryName: touchedCategories[0]?.name ?? null
+      primaryCategoryName: touchedCategories[0]?.name ?? null,
+      primaryParentCategorySlug: touchedCategories[0]?.parentCategorySlug ?? null,
+      primaryParentCategoryName: touchedCategories[0]?.parentCategoryName ?? null
     };
   }
 
   return {
     categories,
     primaryCategorySlug: null,
-    primaryCategoryName: touchedCategories.length > 1 ? "Multiple categories" : null
+    primaryCategoryName: touchedCategories.length > 1 ? "Multiple topics" : null,
+    primaryParentCategorySlug: touchedParentCategories.length === 1 ? touchedParentCategories[0]?.slug ?? null : null,
+    primaryParentCategoryName: touchedParentCategories.length === 1 ? touchedParentCategories[0]?.name ?? null : null
   };
 }

@@ -149,7 +149,15 @@ function mockPipelineApis(page: Page): void {
         durationSeconds: 20,
         keywordSeed: "indian politics",
         matchedKeywords: [],
-        llmReview: null,
+        llmReview: {
+          keep: true,
+          relevant: true,
+          spam: false,
+          viralityScore: 47,
+          confidence: 0.86,
+          reason: "Legacy review without sentiment should still render.",
+          evidenceSummary: "Back-compat pipeline payload."
+        },
         score: 42,
         scoreBreakdown: {
           reach: 10,
@@ -169,8 +177,8 @@ function mockPipelineApis(page: Page): void {
       completedAt: "2026-08-25T00:00:02.000Z",
       keywordSeeds: ["indian politics"],
       scanQuery: "indian politics",
-      parentCategorySlug: "direct-imports",
-      parentCategoryName: "Direct imports",
+      parentCategorySlug: null,
+      parentCategoryName: null,
       sourceStrategy: "hybrid",
       usedFallback: false,
       itemCount: 1,
@@ -185,11 +193,20 @@ function mockPipelineApis(page: Page): void {
       {
         slug: "direct-imports",
         name: "Direct imports",
+        parentCategorySlug: null,
+        parentCategoryName: null,
         latestQuery: "indian politics",
         latestScanAt: "2026-08-25T00:00:02.000Z",
         recordCount: 0,
         scanCount: 1,
-        queries: ["indian politics"]
+        queries: ["indian politics"],
+        dominantSentiment: null,
+        sentimentTotals: {
+          positive: 0,
+          negative: 0,
+          neutral: 0,
+          mixed: 0
+        }
       }
     ]
   };
@@ -281,6 +298,7 @@ test("landing page quick reaction entry opens the pipeline surface", async () =>
     await page.getByRole("heading", { name: "Reaction studio" }).waitFor();
     await page.getByRole("button", { name: "Submit" }).waitFor();
     await page.getByText("Sample direct import").waitFor();
+    await page.getByText("Copilot reason: Legacy review without sentiment should still render.").waitFor();
   } finally {
     await page.close();
   }

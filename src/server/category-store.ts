@@ -7,6 +7,7 @@ import type {
   DumpDocument,
   ExistingCategoryRecord,
   RecategorizedCategory,
+  SentimentLabel,
   ShortRecord
 } from "../shared/types";
 
@@ -16,6 +17,13 @@ const DIRECT_IMPORTS_CATEGORY_QUERY = "Manual YouTube URL imports";
 export const REACTION_LIMBO_CATEGORY_SLUG = "reaction-limbo";
 export const REACTION_LIMBO_CATEGORY_NAME = "Reaction limbo";
 const REACTION_LIMBO_CATEGORY_QUERY = "Previewed YouTube URL downloads";
+const MAX_SEMANTIC_CATEGORIES = 10;
+const EMPTY_SENTIMENT_TOTALS: Record<SentimentLabel, number> = {
+  positive: 0,
+  negative: 0,
+  neutral: 0,
+  mixed: 0
+};
 
 function now(): string {
   return new Date().toISOString();
@@ -96,7 +104,9 @@ export async function loadSemanticCategoryRecords(outputDir: string): Promise<Ex
         records.push({
           record,
           categorySlug: dump.categorySlug,
-          categoryName: dump.categoryName
+          categoryName: dump.categoryName,
+          parentCategorySlug: dump.metadata.parentCategorySlug ?? null,
+          parentCategoryName: dump.metadata.parentCategoryName ?? null
         });
       }
     } catch {
@@ -105,6 +115,52 @@ export async function loadSemanticCategoryRecords(outputDir: string): Promise<Ex
   }
 
   return records;
+}
+
+function summarizeSentiment(records: ShortRecord[]): {
+  dominantSentiment: SentimentLabel | null;
+  sentimentTotals: Record<SentimentLabel, number>;
+} {
+  const sentimentTotals = { ...EMPTY_SENTIMENT_TOTALS };
+
+  for (const record of records) {
+    const label = record.llmReview?.sentiment?.label;
+    if (label) {
+      sentimentTotals[label] += 1;
+    }
+  }
+
+  const dominantEntry = (Object.entries(sentimentTotals) as Array<[SentimentLabel, number]>)
+    .sort((left, right) => right[1] - left[1])[0];
+
+  return {
+    dominantSentiment: dominantEntry && dominantEntry[1] > 0 ? dominantEntry[0] : null,
+    sentimentTotals
+  };
+}
+
+export function buildCategorySummary(
+  dump: DumpDocument,
+  existingSummary?: CategorySummary
+): CategorySummary | null {
+  if (!dump.categorySlug || !dump.categoryName) {
+    return null;
+  }
+
+  const sentiment = summarizeSentiment(dump.records);
+  return {
+    slug: dump.categorySlug,
+    name: dump.categoryName,
+    parentCategorySlug: dump.metadata.parentCategorySlug ?? null,
+    parentCategoryName: dump.metadata.parentCategoryName ?? null,
+    latestQuery: dump.searchQuery ?? dump.metadata.scanQuery ?? "",
+    latestScanAt: dump.generatedAt,
+    recordCount: dump.records.length,
+    scanCount: existingSummary?.scanCount ?? 1,
+    queries: existingSummary?.queries ?? (dump.searchQuery ? [dump.searchQuery] : []),
+    dominantSentiment: sentiment.dominantSentiment,
+    sentimentTotals: sentiment.sentimentTotals
+  };
 }
 
 export function upsertCategorySummary(
@@ -161,6 +217,10 @@ export async function rewriteSemanticCategoryDumps(
     latestQuery: string;
   }
 ): Promise<{ categoryDumpPaths: string[]; categoryIndexPath: string }> {
+  if (categories.length > MAX_SEMANTIC_CATEGORIES) {
+    throw new Error(`Refusing to write ${categories.length} semantic categories. The limit is ${MAX_SEMANTIC_CATEGORIES}.`);
+  }
+
   const existingIndex = await loadCategoryIndex(outputDir);
   const currentDumpPaths = await listCategoryDumpPaths(outputDir);
   const semanticDumpPaths = currentDumpPaths.filter((path) => basename(path) !== `${DIRECT_IMPORTS_CATEGORY_SLUG}.json`);
@@ -187,8 +247,8 @@ export async function rewriteSemanticCategoryDumps(
         completedAt: options.generatedAt,
         keywordSeeds: [options.latestQuery],
         scanQuery: category.touchedByCurrentScan ? options.latestQuery : existingSummary?.latestQuery ?? options.latestQuery,
-        parentCategorySlug: category.slug,
-        parentCategoryName: category.name,
+        parentCategorySlug: category.parentCategorySlug,
+        parentCategoryName: category.parentCategoryName,
         sourceStrategy: "hybrid",
         usedFallback: false,
         itemCount: records.length,
@@ -203,43 +263,36 @@ export async function rewriteSemanticCategoryDumps(
 
   const directImportsDump = await loadCategoryDump(outputDir, DIRECT_IMPORTS_CATEGORY_SLUG).catch(() => null);
   const directImportsSummary = directImportsDump
-    ? {
-        slug: DIRECT_IMPORTS_CATEGORY_SLUG,
-        name: directImportsDump.categoryName ?? DIRECT_IMPORTS_CATEGORY_NAME,
-        latestQuery: directImportsDump.searchQuery ?? DIRECT_IMPORTS_CATEGORY_QUERY,
-        latestScanAt: directImportsDump.generatedAt,
-        recordCount: directImportsDump.records.length,
-        scanCount: existingIndex.categories.find((entry) => entry.slug === DIRECT_IMPORTS_CATEGORY_SLUG)?.scanCount ?? 1,
-        queries: existingIndex.categories.find((entry) => entry.slug === DIRECT_IMPORTS_CATEGORY_SLUG)?.queries
-          ?? [directImportsDump.searchQuery ?? DIRECT_IMPORTS_CATEGORY_QUERY]
-      }
+    ? buildCategorySummary(
+        directImportsDump,
+        existingIndex.categories.find((entry) => entry.slug === DIRECT_IMPORTS_CATEGORY_SLUG)
+      )
     : null;
   const reactionLimboDump = await loadCategoryDump(outputDir, REACTION_LIMBO_CATEGORY_SLUG).catch(() => null);
   const reactionLimboSummary = reactionLimboDump
-    ? {
-        slug: REACTION_LIMBO_CATEGORY_SLUG,
-        name: reactionLimboDump.categoryName ?? REACTION_LIMBO_CATEGORY_NAME,
-        latestQuery: reactionLimboDump.searchQuery ?? REACTION_LIMBO_CATEGORY_QUERY,
-        latestScanAt: reactionLimboDump.generatedAt,
-        recordCount: reactionLimboDump.records.length,
-        scanCount: existingIndex.categories.find((entry) => entry.slug === REACTION_LIMBO_CATEGORY_SLUG)?.scanCount ?? 1,
-        queries: existingIndex.categories.find((entry) => entry.slug === REACTION_LIMBO_CATEGORY_SLUG)?.queries
-          ?? [reactionLimboDump.searchQuery ?? REACTION_LIMBO_CATEGORY_QUERY]
-      }
+    ? buildCategorySummary(
+        reactionLimboDump,
+        existingIndex.categories.find((entry) => entry.slug === REACTION_LIMBO_CATEGORY_SLUG)
+      )
     : null;
 
   const semanticSummaries = categories.map((category) => {
     const existingSummary = existingIndex.categories.find((entry) => entry.slug === category.slug);
+    const sentiment = summarizeSentiment(category.records);
     return {
       slug: category.slug,
       name: category.name,
+      parentCategorySlug: category.parentCategorySlug,
+      parentCategoryName: category.parentCategoryName,
       latestQuery: category.touchedByCurrentScan ? options.latestQuery : existingSummary?.latestQuery ?? options.latestQuery,
       latestScanAt: category.touchedByCurrentScan ? options.generatedAt : existingSummary?.latestScanAt ?? options.generatedAt,
       recordCount: Math.min(category.records.length, 20),
       scanCount: (existingSummary?.scanCount ?? 0) + (category.touchedByCurrentScan ? 1 : 0),
       queries: category.touchedByCurrentScan
         ? [options.latestQuery, ...(existingSummary?.queries ?? []).filter((query) => query !== options.latestQuery)].slice(0, 20)
-        : existingSummary?.queries ?? [options.latestQuery]
+        : existingSummary?.queries ?? [options.latestQuery],
+      dominantSentiment: sentiment.dominantSentiment,
+      sentimentTotals: sentiment.sentimentTotals
     };
   });
 
@@ -265,6 +318,8 @@ export async function upsertCategoryRecord(
   category: {
     slug: string;
     name: string;
+    parentCategorySlug?: string | null;
+    parentCategoryName?: string | null;
     latestQuery: string;
     generatedAt?: string;
   }
@@ -286,8 +341,8 @@ export async function upsertCategoryRecord(
       completedAt: generatedAt,
       keywordSeeds: [short.keywordSeed],
       scanQuery: category.latestQuery,
-      parentCategorySlug: category.slug,
-      parentCategoryName: category.name,
+      parentCategorySlug: category.parentCategorySlug ?? null,
+      parentCategoryName: category.parentCategoryName ?? null,
       sourceStrategy: "hybrid",
       usedFallback: false,
       itemCount: records.length,
@@ -303,9 +358,12 @@ export async function upsertCategoryRecord(
     categories: upsertCategorySummary(categoryIndex.categories, {
       slug: category.slug,
       name: category.name,
+      parentCategorySlug: category.parentCategorySlug ?? null,
+      parentCategoryName: category.parentCategoryName ?? null,
       latestQuery: category.latestQuery,
       latestScanAt: generatedAt,
-      recordCount: records.length
+      recordCount: records.length,
+      ...summarizeSentiment(records)
     })
   });
 

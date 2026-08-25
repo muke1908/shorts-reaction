@@ -9,6 +9,7 @@ import { useProcessingJobs } from "./features/processing/useProcessingJobs";
 import { formatRelativeDaysAgo } from "./lib/format";
 import type {
   AvatarReactionProviderKind,
+  CategorySummary,
   CategoryIndexDocument,
   DeleteShortResponse,
   DumpDocument,
@@ -18,6 +19,7 @@ import type {
 } from "../shared/types";
 
 const DIRECT_IMPORTS_CATEGORY_SLUG = "direct-imports";
+const REACTION_LIMBO_CATEGORY_SLUG = "reaction-limbo";
 const PIPELINE_PATHS = new Set(["/pipeline", "/dashboard"]);
 const ADVANCED_REACTION_PATHS = new Set(["/quick-reaction/advanced", "/advanced/user-reaction"]);
 
@@ -143,6 +145,29 @@ export function App(): JSX.Element {
   }, []);
 
   const rankedRecords = useMemo(() => document?.records ?? [], [document]);
+  const groupedCategories = useMemo(() => {
+    const categoryGroups = new Map<string, { key: string; name: string; categories: CategorySummary[] }>();
+
+    for (const category of categories?.categories ?? []) {
+      const isSystemCategory = category.slug === DIRECT_IMPORTS_CATEGORY_SLUG || category.slug === REACTION_LIMBO_CATEGORY_SLUG;
+      const groupName = category.parentCategoryName ?? (isSystemCategory ? "System" : "Other");
+      const groupKey = category.parentCategorySlug ?? `group-${groupName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+      const group = categoryGroups.get(groupKey) ?? {
+        key: groupKey,
+        name: groupName,
+        categories: []
+      };
+      group.categories.push(category);
+      categoryGroups.set(groupKey, group);
+    }
+
+    return [...categoryGroups.values()]
+      .map((group) => ({
+        ...group,
+        categories: group.categories.sort((left, right) => right.latestScanAt.localeCompare(left.latestScanAt))
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }, [categories]);
   const {
     processingByShortId,
     startProcessing
@@ -161,6 +186,12 @@ export function App(): JSX.Element {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    window.document.documentElement.scrollTop = 0;
+    window.document.body.scrollTop = 0;
+  }, [route]);
 
   const handleScan = useCallback(async (): Promise<void> => {
     const trimmedQuery = scanQuery.trim();
@@ -355,8 +386,10 @@ export function App(): JSX.Element {
               <div className="small-text">
                 {document ? formatRelativeDaysAgo(document.generatedAt) : "No scan loaded yet."}
               </div>
-              {document?.categoryName ? (
-                <div className="small-text">Current category: {document.categoryName}</div>
+              {document?.categoryName || document?.metadata.parentCategoryName ? (
+                <div className="small-text">
+                  Current category: {[document?.metadata.parentCategoryName, document?.categoryName].filter(Boolean).join(" / ")}
+                </div>
               ) : null}
             </div>
             <div className="scan-controls">
@@ -388,23 +421,33 @@ export function App(): JSX.Element {
         {error ? <section className="panel error">{error}</section> : null}
         {!initialLoading && !error && document ? (
           <>
-            {categories?.categories.length ? (
+            {groupedCategories.length ? (
               <section className="category-strip" aria-label="Parent categories">
                 <div className="category-strip__rail">
-                  {categories.categories.map((category) => (
-                    <button
-                      key={category.slug}
-                      type="button"
-                      className={`category-bookmark${document.categorySlug === category.slug ? " category-bookmark--active" : ""}`}
-                      onClick={() => {
-                        handleSelectCategory(category.slug).catch((reason: unknown) => {
-                          setError(reason instanceof Error ? reason.message : String(reason));
-                        });
-                      }}
-                    >
-                      <span className="category-bookmark__title">{category.name}</span>
-                      <span className="category-bookmark__meta">{category.recordCount}</span>
-                    </button>
+                  {groupedCategories.map((group) => (
+                    <div key={group.key} className="category-group">
+                      <div className="category-group__title">{group.name}</div>
+                      <div className="category-group__items">
+                        {group.categories.map((category) => (
+                          <button
+                            key={category.slug}
+                            type="button"
+                            className={`category-bookmark${document.categorySlug === category.slug ? " category-bookmark--active" : ""}`}
+                            onClick={() => {
+                              handleSelectCategory(category.slug).catch((reason: unknown) => {
+                                setError(reason instanceof Error ? reason.message : String(reason));
+                              });
+                            }}
+                          >
+                            <span className="category-bookmark__title">{category.name}</span>
+                            <span className="category-bookmark__meta">
+                              {category.recordCount}
+                              {category.dominantSentiment ? ` · ${category.dominantSentiment}` : ""}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
                 {categoryLoading ? <div className="category-strip__status small-text">Switching category…</div> : null}

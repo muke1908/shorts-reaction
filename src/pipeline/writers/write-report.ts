@@ -22,7 +22,7 @@ export async function writeMarkdownReport(
     ``,
     `## Top 10`,
     ...records.map((record, index) =>
-      `${index + 1}. **${record.title}** — ${record.channel}  \n   Score: ${record.score}  \n   Reason: ${record.llmReview?.reason ?? "Heuristic fallback"}  \n   Evidence: ${record.llmReview?.evidenceSummary ?? record.scoreBreakdown.reasons.join(", ")}`
+      `${index + 1}. **${record.title}** — ${record.channel}  \n   Score: ${record.score}  \n   Sentiment: ${record.llmReview?.sentiment.label ?? "unknown"}  \n   Reason: ${record.llmReview?.reason ?? "Heuristic fallback"}  \n   Evidence: ${record.llmReview?.evidenceSummary ?? record.scoreBreakdown.reasons.join(", ")}`
     )
   ].join("\n");
 

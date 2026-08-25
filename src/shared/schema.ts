@@ -19,6 +19,17 @@ function assertShortRecord(record: ShortRecord): void {
   if (!Array.isArray(record.matchedKeywords)) {
     throw new Error("Invalid ShortRecord: matchedKeywords must be an array.");
   }
+
+  if (record.llmReview?.sentiment) {
+    const { sentiment } = record.llmReview;
+    if (
+      typeof sentiment.label !== "string"
+      || typeof sentiment.confidence !== "number"
+      || typeof sentiment.reason !== "string"
+    ) {
+      throw new Error("Invalid ShortRecord: llmReview sentiment is malformed.");
+    }
+  }
 }
 
 export function assertDumpDocument(document: DumpDocument): DumpDocument {

@@ -26,6 +26,14 @@ export interface ScoreBreakdown {
   reasons: string[];
 }
 
+export type SentimentLabel = "positive" | "negative" | "neutral" | "mixed";
+
+export interface SentimentAnalysis {
+  label: SentimentLabel;
+  confidence: number;
+  reason: string;
+}
+
 export interface LlmReview {
   keep: boolean;
   relevant: boolean;
@@ -34,6 +42,7 @@ export interface LlmReview {
   confidence: number;
   reason: string;
   evidenceSummary: string;
+  sentiment: SentimentAnalysis;
 }
 
 export interface ShortRecord {
@@ -150,11 +159,15 @@ export interface PipelineResult {
 export interface CategorySummary {
   slug: string;
   name: string;
+  parentCategorySlug: string | null;
+  parentCategoryName: string | null;
   latestQuery: string;
   latestScanAt: string;
   recordCount: number;
   scanCount: number;
   queries: string[];
+  dominantSentiment: SentimentLabel | null;
+  sentimentTotals: Record<SentimentLabel, number>;
 }
 
 export interface CategoryIndexDocument {
@@ -295,11 +308,15 @@ export interface ExistingCategoryRecord {
   record: ShortRecord;
   categorySlug: string;
   categoryName: string;
+  parentCategorySlug: string | null;
+  parentCategoryName: string | null;
 }
 
 export interface RecategorizedCategory {
   slug: string;
   name: string;
+  parentCategorySlug: string;
+  parentCategoryName: string;
   reason: string;
   records: ShortRecord[];
   touchedByCurrentScan: boolean;
@@ -309,4 +326,6 @@ export interface RecategorizationResult {
   categories: RecategorizedCategory[];
   primaryCategorySlug: string | null;
   primaryCategoryName: string | null;
+  primaryParentCategorySlug: string | null;
+  primaryParentCategoryName: string | null;
 }

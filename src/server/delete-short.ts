@@ -2,7 +2,7 @@ import { basename, resolve } from "node:path";
 import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { assertDumpDocument } from "../shared/schema";
 import type { DumpDocument, PipelineConfig, ReactionJobRecord } from "../shared/types";
-import { listCategoryDumpPaths, loadCategoryIndex, writeCategoryIndex } from "./category-store";
+import { buildCategorySummary, listCategoryDumpPaths, loadCategoryIndex, writeCategoryIndex } from "./category-store";
 
 export interface DeleteShortResult {
   deletedShortId: string;
@@ -77,20 +77,15 @@ async function rebuildCategoryIndex(config: PipelineConfig): Promise<void> {
   for (const path of categoryDumpPaths) {
     try {
       const dump = await readJson(path);
-      if (!dump.categorySlug || !dump.categoryName) {
-        continue;
+      const summary = buildCategorySummary(
+        dump,
+        dump.categorySlug
+          ? existingIndex.categories.find((category) => category.slug === dump.categorySlug)
+          : undefined
+      );
+      if (summary) {
+        categories.push(summary);
       }
-
-      categories.push({
-        slug: dump.categorySlug,
-        name: dump.categoryName,
-        latestQuery: dump.searchQuery ?? dump.metadata.scanQuery ?? "",
-        latestScanAt: dump.generatedAt,
-        recordCount: dump.records.length,
-        scanCount: existingIndex.categories.find((category) => category.slug === dump.categorySlug)?.scanCount ?? 1,
-        queries: existingIndex.categories.find((category) => category.slug === dump.categorySlug)?.queries
-          ?? (dump.searchQuery ? [dump.searchQuery] : [])
-      });
     } catch {
       // Ignore malformed category dumps during index rebuild.
     }

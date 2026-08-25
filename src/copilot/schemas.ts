@@ -20,6 +20,7 @@ export interface CopilotCategoryDecisionResponse {
 
 export interface CopilotCategoryRegroupResponse {
   categories: Array<{
+    parentCategoryName: string;
     name: string;
     reason: string;
     ids: string[];

@@ -4,7 +4,7 @@ import { requestJsonFromCopilot } from "../../copilot/client";
 import type { CopilotReviewBatchResponse } from "../../copilot/schemas";
 import { isSameUtcDay } from "../../shared/dates";
 import { scoreShort } from "../../shared/scoring";
-import type { LlmReview, PipelineConfig, ShortRecord, SourceItem } from "../../shared/types";
+import type { LlmReview, PipelineConfig, SentimentLabel, ShortRecord, SourceItem } from "../../shared/types";
 
 function normalize(value: string): string {
   return value.toLowerCase();
@@ -24,6 +24,10 @@ function buildRelevanceTerms(scanQuery: string, topicContextName: string, keywor
   ));
 }
 
+function isSentimentLabel(value: string): value is SentimentLabel {
+  return value === "positive" || value === "negative" || value === "neutral" || value === "mixed";
+}
+
 function validateCopilotReviews(
   response: CopilotReviewBatchResponse,
   expectedItems: SourceItem[]
@@ -32,9 +36,18 @@ function validateCopilotReviews(
     throw new Error("Copilot CLI returned an invalid review batch payload.");
   }
 
-  const reviews = new Map(
-    response.reviews.map(({ id, ...review }) => [id, review satisfies LlmReview])
-  );
+  const reviews = new Map<string, LlmReview>();
+  for (const entry of response.reviews) {
+    const { id, ...review } = entry;
+    if (!review.sentiment || !isSentimentLabel(review.sentiment.label)) {
+      throw new Error(`Copilot review for candidate ${id} is missing a valid sentiment label.`);
+    }
+    if (typeof review.sentiment.confidence !== "number" || typeof review.sentiment.reason !== "string") {
+      throw new Error(`Copilot review for candidate ${id} is missing valid sentiment confidence or reason.`);
+    }
+    reviews.set(id, review satisfies LlmReview);
+  }
+
   for (const item of expectedItems) {
     if (!reviews.has(item.id)) {
       throw new Error(`Copilot CLI review omitted candidate ${item.id}.`);

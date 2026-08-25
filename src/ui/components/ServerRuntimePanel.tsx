@@ -9,6 +9,7 @@ interface ServerRuntimePanelProps {
 
 interface SparklineProps {
   label: string;
+  value: string;
   colorClassName: string;
   values: number[];
 }
@@ -28,13 +29,14 @@ function buildSparklinePoints(values: number[], width: number, height: number): 
     .join(" ");
 }
 
-function Sparkline({ label, colorClassName, values }: SparklineProps): JSX.Element {
+function Sparkline({ label, value, colorClassName, values }: SparklineProps): JSX.Element {
   const points = buildSparklinePoints(values, 220, 52);
 
   return (
     <article className="runtime-monitor__chart">
       <div className="runtime-monitor__chart-header">
         <span>{label}</span>
+        <strong>{value}</strong>
       </div>
       <svg className="runtime-monitor__sparkline" viewBox="0 0 220 52" preserveAspectRatio="none" aria-hidden="true">
         <path className="runtime-monitor__sparkline-grid" d="M0 13 H220 M0 26 H220 M0 39 H220" />
@@ -92,6 +94,7 @@ export function ServerRuntimePanel({
   const rssValues = history.map((item) => item.rssBytes / (1024 * 1024));
   const heapValues = history.map((item) => item.heapUsedBytes / (1024 * 1024));
   const loadValues = history.map((item) => item.loadAverage[0]);
+  const latest = history[history.length - 1];
 
   return (
     <section className={`panel runtime-monitor${compact ? " runtime-monitor--compact" : ""}${embedded ? " runtime-monitor--embedded" : ""}`}>
@@ -102,10 +105,10 @@ export function ServerRuntimePanel({
         <div className="runtime-monitor__status-pill">LIVE</div>
       </div>
       <div className="runtime-monitor__charts">
-        <Sparkline label="CPU %" colorClassName="runtime-monitor__sparkline-line runtime-monitor__sparkline-line--cpu" values={cpuValues} />
-        <Sparkline label="RSS MB" colorClassName="runtime-monitor__sparkline-line runtime-monitor__sparkline-line--rss" values={rssValues} />
-        <Sparkline label="Heap MB" colorClassName="runtime-monitor__sparkline-line runtime-monitor__sparkline-line--heap" values={heapValues} />
-        <Sparkline label="Load avg (1m)" colorClassName="runtime-monitor__sparkline-line runtime-monitor__sparkline-line--load" values={loadValues} />
+        <Sparkline label="CPU %" value={`${latest.cpuPercent.toFixed(1)}%`} colorClassName="runtime-monitor__sparkline-line runtime-monitor__sparkline-line--cpu" values={cpuValues} />
+        <Sparkline label="RSS MB" value={`${(latest.rssBytes / (1024 * 1024)).toFixed(1)} MB`} colorClassName="runtime-monitor__sparkline-line runtime-monitor__sparkline-line--rss" values={rssValues} />
+        <Sparkline label="Heap MB" value={`${(latest.heapUsedBytes / (1024 * 1024)).toFixed(1)} MB`} colorClassName="runtime-monitor__sparkline-line runtime-monitor__sparkline-line--heap" values={heapValues} />
+        <Sparkline label="Load avg (1m)" value={latest.loadAverage[0].toFixed(2)} colorClassName="runtime-monitor__sparkline-line runtime-monitor__sparkline-line--load" values={loadValues} />
       </div>
     </section>
   );

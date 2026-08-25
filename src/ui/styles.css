@@ -365,6 +365,12 @@ a {
   font-size: 12px;
 }
 
+.runtime-monitor__chart-header strong {
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .runtime-monitor__sparkline {
   width: 100%;
   height: 64px;
@@ -437,6 +443,30 @@ td {
   background: rgba(59, 130, 246, 0.2);
   color: #bfdbfe;
   font-size: 12px;
+}
+
+.chip--sentiment {
+  text-transform: capitalize;
+}
+
+.chip--sentiment-positive {
+  background: rgba(34, 197, 94, 0.18);
+  color: #bbf7d0;
+}
+
+.chip--sentiment-negative {
+  background: rgba(248, 113, 113, 0.18);
+  color: #fecaca;
+}
+
+.chip--sentiment-neutral {
+  background: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+}
+
+.chip--sentiment-mixed {
+  background: rgba(168, 85, 247, 0.18);
+  color: #e9d5ff;
 }
 
 .small-text {
@@ -991,14 +1021,36 @@ td {
 
 .category-strip {
   margin: 0 0 12px;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .category-strip__rail {
   display: flex;
-  gap: 8px;
-  overflow-x: auto;
+  gap: 14px;
+  min-width: max-content;
   padding: 0 0 4px;
-  scrollbar-width: thin;
+}
+
+.category-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: max-content;
+}
+
+.category-group__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+  padding-left: 2px;
+}
+
+.category-group__items {
+  display: flex;
+  gap: 8px;
 }
 
 .category-bookmark {
@@ -1185,15 +1237,15 @@ td {
   border-color: rgba(34, 211, 238, 0.25);
 }
 
-.copilot-monitor__brain-core--active ~ .copilot-monitor__brain-ring--outer {
+.copilot-monitor__brain-ring--animated.copilot-monitor__brain-ring--outer {
   animation: spinSlow 14s linear infinite;
 }
 
-.copilot-monitor__brain-core--active ~ .copilot-monitor__brain-ring--mid {
+.copilot-monitor__brain-ring--animated.copilot-monitor__brain-ring--mid {
   animation: spinReverse 10s linear infinite;
 }
 
-.copilot-monitor__brain-core--active ~ .copilot-monitor__brain-ring--inner {
+.copilot-monitor__brain-ring--animated.copilot-monitor__brain-ring--inner {
   animation: spinSlow 7s linear infinite;
 }
 
@@ -1202,11 +1254,11 @@ td {
   opacity: 0;
 }
 
-.copilot-monitor__brain-pulse--one {
+.copilot-monitor__brain-pulse--animated.copilot-monitor__brain-pulse--one {
   animation: brainWave 2.4s ease-out infinite;
 }
 
-.copilot-monitor__brain-pulse--two {
+.copilot-monitor__brain-pulse--animated.copilot-monitor__brain-pulse--two {
   animation: brainWave 2.4s ease-out 1.2s infinite;
 }
 
@@ -1233,6 +1285,11 @@ td {
   padding: 8px 9px;
 }
 
+.copilot-monitor__stat--changed,
+.copilot-monitor__metric--changed {
+  animation: copilotMetricChange 420ms ease-out;
+}
+
 .copilot-monitor__stat-label {
   display: block;
   text-transform: uppercase;
@@ -1247,6 +1304,26 @@ td {
   grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
   gap: 4px 10px;
   font-size: 12px;
+}
+
+@keyframes copilotMetricChange {
+  0% {
+    transform: translateY(2px);
+    opacity: 0.6;
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0);
+  }
+
+  50% {
+    transform: translateY(0);
+    opacity: 1;
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.18);
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0);
+  }
 }
 
 .copilot-monitor__error {

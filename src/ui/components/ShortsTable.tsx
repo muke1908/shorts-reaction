@@ -32,7 +32,10 @@ export const ShortsTable = memo(function ShortsTable({
           </tr>
         </thead>
         <tbody>
-          {records.map((record, index) => (
+          {records.map((record, index) => {
+            const sentiment = record.llmReview?.sentiment ?? null;
+
+            return (
             <tr key={record.id}>
               <td>{index + 1}</td>
               <td className="details-column small-text">
@@ -46,6 +49,11 @@ export const ShortsTable = memo(function ShortsTable({
                 <div><strong>Views:</strong> {formatNumber(record.views)}</div>
                 <div><strong>Likes:</strong> {formatNumber(record.likes)}</div>
                 <div><strong>Comments:</strong> {formatNumber(record.comments)}</div>
+                {sentiment ? (
+                  <div>
+                    <strong>Sentiment:</strong> {sentiment.label} ({sentiment.confidence.toFixed(2)})
+                  </div>
+                ) : null}
                 <div className="details-actions">
                   <button
                     className="danger-button"
@@ -58,6 +66,11 @@ export const ShortsTable = memo(function ShortsTable({
                   </button>
                 </div>
                 <div className="chip-row">
+                  {sentiment ? (
+                    <span className={`chip chip--sentiment chip--sentiment-${sentiment.label}`}>
+                      {sentiment.label}
+                    </span>
+                  ) : null}
                   {record.matchedKeywords.map((keyword) => (
                     <span key={keyword} className="chip">
                       {keyword}
@@ -78,6 +91,7 @@ export const ShortsTable = memo(function ShortsTable({
                     <div>Copilot score: {record.llmReview.viralityScore}</div>
                     <div>Copilot confidence: {record.llmReview.confidence.toFixed(2)}</div>
                     <div>Copilot reason: {record.llmReview.reason}</div>
+                    {sentiment ? <div>Sentiment reason: {sentiment.reason}</div> : null}
                   </>
                 ) : null}
               </td>
@@ -93,7 +107,8 @@ export const ShortsTable = memo(function ShortsTable({
                 <OutputVideoCell summary={processingByShortId[record.id] ?? null} />
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </section>
