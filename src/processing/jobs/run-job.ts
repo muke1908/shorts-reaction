@@ -6,8 +6,6 @@ import { downloadYoutubeShort } from "../sources/download-youtube-short";
 import { composeReactionVideo } from "../composition/compose-reaction-video";
 import { getJobPaths } from "../storage/paths";
 import { getAvatarReactionProvider } from "../reactions/provider";
-import { writeReactionInstructions } from "../reactions/reaction-instructions";
-import { resolveOptionalAiCharacterStaticAssetPath } from "../reactions/providers/ai-character-provider";
 import { runCommand } from "../media/run-command";
 
 async function finalizeRecordedStageOutputVideo(
@@ -105,17 +103,13 @@ export async function runReactionJob(job: ReactionJobRecord, config: PipelineCon
       sourceVideoPath: paths.sourceVideoPath,
       status: "preparing-reaction"
     });
-
-    await writeReactionInstructions(current, paths.sourceVideoPath, paths.reactionInstructionsPath, config);
     current = await updateReactionJob(current, {
-      reactionInstructionsPath: paths.reactionInstructionsPath,
       status: "rendering-reaction"
     });
 
     const request = {
       job: current,
       sourceVideoPath: paths.sourceVideoPath,
-      reactionInstructionsPath: paths.reactionInstructionsPath,
       providerRenderPath: paths.providerRenderPath,
       outputVideoPath: paths.reactionVideoPath,
       config
@@ -129,19 +123,14 @@ export async function runReactionJob(job: ReactionJobRecord, config: PipelineCon
     });
     const result = await avatarReactionProvider.waitForRender(submission, request);
     await avatarReactionProvider.normalizeResult(result, request);
+    const compositionPlan = await avatarReactionProvider.buildCompositionPlan(result, request);
     current = await updateReactionJob(current, {
       reactionVideoPath: paths.reactionVideoPath,
       status: "compositing"
     });
 
-    const endVideoPath = current.reactionProvider === "ai-character"
-      ? await resolveOptionalAiCharacterStaticAssetPath(config, "end")
-      : null;
-
     await composeReactionVideo(
-      paths.sourceVideoPath,
-      paths.reactionVideoPath,
-      endVideoPath,
+      compositionPlan,
       paths.outputVideoPath,
       paths.posterPath,
       config

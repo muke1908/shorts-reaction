@@ -7,7 +7,6 @@ export interface JobPaths {
   manifestPath: string;
   sourceVideoPath: string;
   providerInputVideoPath: string;
-  reactionInstructionsPath: string;
   providerRenderPath: string;
   reactionVideoPath: string;
   outputVideoPath: string;
@@ -24,8 +23,7 @@ export function getJobPaths(jobId: string, config: PipelineConfig): JobPaths {
     jobDir,
     manifestPath: resolve(jobDir, "manifest.json"),
     sourceVideoPath: resolve(jobDir, "source.mp4"),
-    providerInputVideoPath: resolve(jobDir, "provider-input.webm"),
-    reactionInstructionsPath: resolve(jobDir, "reaction-instructions.json"),
+    providerInputVideoPath: resolve(jobDir, "provider-input.mp4"),
     providerRenderPath: resolve(jobDir, "provider-render.mp4"),
     reactionVideoPath: resolve(jobDir, "reaction.mp4"),
     outputVideoPath: resolve(jobDir, "output.mp4"),

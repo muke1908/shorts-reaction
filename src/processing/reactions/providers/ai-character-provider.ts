@@ -1,7 +1,7 @@
 import { access, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { PipelineConfig } from "../../../shared/types";
-import type { AvatarReactionRequest } from "../provider";
+import type { AvatarReactionRequest, ReactionCompositionPlan } from "../provider";
 import { normalizeReactionVideo } from "./normalize-reaction-video";
 
 const STATIC_ASSET_EXTENSIONS = [".mp4", ".mov", ".webm", ".mkv"] as const;
@@ -59,4 +59,27 @@ export async function createAiCharacterReactionVideo({
 }: AvatarReactionRequest): Promise<void> {
   const inputVideoPath = await resolveAiCharacterStaticAssetPath(config);
   await normalizeReactionVideo(inputVideoPath, outputVideoPath, config, "AI character static provider");
+}
+
+export async function buildAiCharacterCompositionPlan(
+  request: AvatarReactionRequest
+): Promise<ReactionCompositionPlan> {
+  const endVideoPath = await resolveOptionalAiCharacterStaticAssetPath(request.config, "end");
+
+  return {
+    top: {
+      videoPath: request.sourceVideoPath,
+      startTimeSeconds: 3
+    },
+    bottomStart: {
+      videoPath: request.outputVideoPath,
+      startTimeSeconds: 0
+    },
+    bottomEnd: endVideoPath
+      ? {
+          videoPath: endVideoPath,
+          startAtTopEndOffsetSeconds: -1
+        }
+      : null
+  };
 }

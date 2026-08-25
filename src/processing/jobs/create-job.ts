@@ -2,8 +2,9 @@ import type { PipelineConfig, ReactionJobRecord, ShortRecord } from "../../share
 import { providerRequiresUserMedia } from "../../shared/reaction-providers";
 import { createReactionJob, findLatestJobForShort } from "./job-store";
 import { runReactionJob } from "./run-job";
-import { writeFile } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import { getJobPaths } from "../storage/paths";
+import { exportVideoAsMp4 } from "../media/export-video-as-mp4";
 
 interface StartReactionJobOptions {
   reactionProvider: ReactionJobRecord["reactionProvider"];
@@ -57,9 +58,19 @@ export async function startReactionJob(
     }
 
     const paths = getJobPaths(job.id, config);
-    const providerInputVideoPath = paths.providerInputVideoPath.replace(/\.webm$/, extensionForMimeType(options.userMedia.mimeType));
-    await writeFile(providerInputVideoPath, Buffer.from(options.userMedia.base64, "base64"));
-    job.providerInputVideoPath = providerInputVideoPath;
+    const uploadedInputPath = `${paths.providerInputVideoPath}.upload${extensionForMimeType(options.userMedia.mimeType)}`;
+    await writeFile(uploadedInputPath, Buffer.from(options.userMedia.base64, "base64"));
+    try {
+      await exportVideoAsMp4(
+        uploadedInputPath,
+        paths.providerInputVideoPath,
+        config,
+        "recorded reaction input"
+      );
+    } finally {
+      await rm(uploadedInputPath, { force: true }).catch(() => undefined);
+    }
+    job.providerInputVideoPath = paths.providerInputVideoPath;
   }
 
   const running = runReactionJob(job, config).finally(() => {

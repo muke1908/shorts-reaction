@@ -10,7 +10,6 @@ test("providerRequiresUserMedia covers all user-media variants", () => {
   assert.equal(providerRequiresUserMedia("user-media-sunglasses"), true);
   assert.equal(providerRequiresUserMedia("user-media-pixelated"), true);
   assert.equal(providerRequiresUserMedia("ai-character"), false);
-  assert.equal(providerRequiresUserMedia("heygen-avatar"), false);
 });
 
 test("providerUserMediaAnonymizer maps providers to recorder anonymizer strategies", () => {

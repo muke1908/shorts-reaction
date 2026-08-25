@@ -60,7 +60,6 @@ export async function createReactionJob(
     sourceVideoPath: null,
     providerInputVideoPath: null,
     recordedStageOutput,
-    reactionInstructionsPath: null,
     providerRenderJobId: null,
     reactionVideoPath: null,
     outputVideoPath: null,

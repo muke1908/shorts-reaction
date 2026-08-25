@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { PipelineConfig, ReactionJobRecord } from "../src/shared/types";
 import { findReusableSourceVideoPathForShort } from "../src/processing/jobs/job-store";
+import { getJobPaths } from "../src/processing/storage/paths";
 
 function createConfig(baseDir: string): PipelineConfig {
   return {
@@ -25,7 +26,6 @@ function createConfig(baseDir: string): PipelineConfig {
     serveUi: false,
     requestedDay: null,
     copilotCliBinary: "copilot",
-    heygenCliBinary: "heygen",
     playwrightBrowser: "chromium"
   };
 }
@@ -59,7 +59,6 @@ function createJobRecord(jobDir: string, sourceVideoPath: string | null, created
     sourceVideoPath,
     providerInputVideoPath: null,
     recordedStageOutput: false,
-    reactionInstructionsPath: null,
     providerRenderJobId: null,
     reactionVideoPath: null,
     outputVideoPath: null,
@@ -123,4 +122,17 @@ test("findReusableSourceVideoPathForShort ignores missing source video files", a
   const reusablePath = await findReusableSourceVideoPathForShort("short-1", config);
 
   assert.equal(reusablePath, validSourcePath);
+});
+
+test("getJobPaths uses mp4 for exported video artifacts", () => {
+  const baseDir = join(tmpdir(), `avatar-job-store-${randomUUID()}`);
+  const config = createConfig(baseDir);
+
+  const paths = getJobPaths("job-123", config);
+
+  assert.equal(paths.sourceVideoPath.endsWith("source.mp4"), true);
+  assert.equal(paths.providerInputVideoPath.endsWith("provider-input.mp4"), true);
+  assert.equal(paths.providerRenderPath.endsWith("provider-render.mp4"), true);
+  assert.equal(paths.reactionVideoPath.endsWith("reaction.mp4"), true);
+  assert.equal(paths.outputVideoPath.endsWith("output.mp4"), true);
 });

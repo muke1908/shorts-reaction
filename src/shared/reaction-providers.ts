@@ -26,11 +26,6 @@ export const REACTION_PROVIDER_OPTIONS: ReactionProviderOption[] = [
     value: "user-media-pixelated",
     label: "User media + pixelated",
     description: "Keep the same flow but add stronger identity masking with pixelation."
-  },
-  {
-    value: "heygen-avatar",
-    label: "HeyGen avatar",
-    description: "Send the job through the HeyGen-backed provider flow for avatar output."
   }
 ];
 

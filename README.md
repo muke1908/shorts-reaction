@@ -93,20 +93,17 @@ Current processing providers:
 | **User media** | Opens the advanced recorder and uses your captured stage output as the lower reaction layer |
 | **User media + sunglasses** | Uses the same browser recorder with a live sunglasses anonymizer |
 | **User media + pixelated** | Uses the same browser recorder with a pixelation anonymizer |
-| **HeyGen avatar** | Renders the lower reaction layer through the HeyGen CLI/OAuth path when available, with API fallback |
-
 ### Composition behavior
 
 When a processing job runs, the backend:
 
 1. downloads the source Short
-2. writes a `reaction-instructions.json` artifact into the job folder
-3. asks the selected provider for a reaction-layer video
-4. composites a **9:16** output with the source on top and the reaction on the bottom
-5. starts the reaction layer immediately
-6. delays the source playback by **4 seconds**
-7. preserves available audio and mixes tracks when both sides contain audio
-8. writes job artifacts under `data/generated/jobs/`
+2. asks the selected provider for a reaction-layer video
+3. composites a **9:16** output with the source on top and the reaction on the bottom
+4. starts the reaction layer immediately
+5. delays the source playback by **4 seconds**
+6. preserves available audio and mixes tracks when both sides contain audio
+7. writes job artifacts under `data/generated/jobs/`
 
 If `data/static/ai-character/end.mp4` exists, the composition also supports the optional outro flow used by the static AI-character provider.
 
@@ -180,7 +177,7 @@ Key generated artifacts:
 - `data/dumps/by-day/YYYY-MM-DD.json` — day-specific dump slices
 - `data/dumps/iterations/<timestamp>.json` — archived per-scan result snapshots
 - `data/reports/<timestamp>.md` — Copilot-written scan reports
-- `data/generated/jobs/<job-id>/reaction-instructions.json` — provider-agnostic reaction brief
+- `data/generated/jobs/<job-id>/provider-input.mp4` — uploaded user-media or recorded-stage input normalized to mp4
 - `data/generated/jobs/<job-id>/provider-render.mp4` — provider render before normalization/composition
 - `data/generated/jobs/<job-id>/reaction.mp4` — normalized reaction-layer clip
 - `data/generated/jobs/<job-id>/output.mp4` — final 9:16 reaction video
@@ -198,10 +195,6 @@ Key generated artifacts:
 | `PIPELINE_REQUEST_TIMEOUT_MS` | HTTP timeout for source requests |
 | `PLAYWRIGHT_BROWSER` | Browser engine for the fallback collector (`chromium`, `firefox`, `webkit`) |
 | `AI_CHARACTER_ASSET_DIR` | Optional directory for static AI-character videos |
-| `HEYGEN_API_KEY` | Optional fallback auth for the HeyGen provider |
-| `HEYGEN_API_URL` | Optional HeyGen API base URL override |
-| `HEYGEN_CLI_BINARY` | Optional explicit path to the `heygen` CLI binary |
-| `HEYGEN_AVATAR_ID` | Required avatar/look ID for the HeyGen provider |
 | `YTDLP_BINARY` | Downloader used to acquire source Shorts |
 | `FFMPEG_BINARY` / `FFPROBE_BINARY` | Video tools used for analysis and compositing |
 
@@ -233,5 +226,4 @@ data/generated/ Reaction-video job assets
 - `docs/pipeline.md`
 - `docs/operations.md`
 - `docs/scoring.md`
-- `docs/heygen-integration.md`
 - `docs/copilot-trigger.md`

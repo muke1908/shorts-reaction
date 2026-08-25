@@ -3,8 +3,7 @@ export type AvatarReactionProviderKind =
   | "ai-character"
   | "user-media"
   | "user-media-sunglasses"
-  | "user-media-pixelated"
-  | "heygen-avatar";
+  | "user-media-pixelated";
 export type UserMediaAnonymizerKind = "none" | "sunglasses" | "pixelated";
 export type ProcessingStatus =
   | "pending"
@@ -116,14 +115,6 @@ export interface PipelineConfig {
   requestedDay: string | null;
   generatedDir: string;
   aiCharacterAssetDir: string;
-  heygenApiKey?: string;
-  heygenApiUrl?: string;
-  heygenCliBinary?: string;
-  heygenTemplateId?: string;
-  heygenAvatarId?: string;
-  heygenVoiceId?: string;
-  heygenReactionVideoUrl?: string;
-  heygenOverlayChromaKeyColor?: string;
   ytdlpBinary: string;
   ffmpegBinary: string;
   ffprobeBinary: string;
@@ -254,17 +245,6 @@ export interface AdvancedUserReactionPreviewDocument {
   previewVideoUrl: string;
 }
 
-export interface ReactionInstructions {
-  sourceTitle: string;
-  sourceChannel: string;
-  sourceDurationSeconds: number | null;
-  providerKind: AvatarReactionProviderKind;
-  speechMode: "silent" | "preserve-user" | "mix-when-available";
-  reactionSummary: string;
-  expressionDirection: string;
-  timingGuidance: string[];
-}
-
 export interface ReactionJobRecord {
   id: string;
   shortId: string;
@@ -278,7 +258,6 @@ export interface ReactionJobRecord {
   sourceVideoPath: string | null;
   providerInputVideoPath: string | null;
   recordedStageOutput: boolean;
-  reactionInstructionsPath: string | null;
   providerRenderJobId: string | null;
   reactionVideoPath: string | null;
   outputVideoPath: string | null;

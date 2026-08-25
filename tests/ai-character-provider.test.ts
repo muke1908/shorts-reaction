@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { PipelineConfig } from "../src/shared/types";
-import { resolveAiCharacterStaticAssetPath } from "../src/processing/reactions/providers/ai-character-provider";
+import { buildAiCharacterCompositionPlan, resolveAiCharacterStaticAssetPath } from "../src/processing/reactions/providers/ai-character-provider";
 
 function createConfig(baseDir: string): PipelineConfig {
   return {
@@ -24,14 +24,6 @@ function createConfig(baseDir: string): PipelineConfig {
     requestedDay: null,
     generatedDir: join(baseDir, "generated"),
     aiCharacterAssetDir: join(baseDir, "static-ai"),
-    heygenApiKey: undefined,
-    heygenApiUrl: undefined,
-    heygenCliBinary: "heygen",
-    heygenTemplateId: undefined,
-    heygenAvatarId: undefined,
-    heygenVoiceId: undefined,
-    heygenReactionVideoUrl: undefined,
-    heygenOverlayChromaKeyColor: undefined,
     ytdlpBinary: "yt-dlp",
     ffmpegBinary: "ffmpeg",
     ffprobeBinary: "ffprobe",
@@ -61,4 +53,35 @@ test("resolveAiCharacterStaticAssetPath falls back to the first supported asset"
   const path = await resolveAiCharacterStaticAssetPath(config);
 
   assert.equal(path, join(config.aiCharacterAssetDir, "ambient.webm"));
+});
+
+test("buildAiCharacterCompositionPlan wires source, start, and optional end timing", async () => {
+  const baseDir = join(tmpdir(), `avatar-ai-character-${randomUUID()}`);
+  const config = createConfig(baseDir);
+
+  await mkdir(config.aiCharacterAssetDir, { recursive: true });
+  await writeFile(join(config.aiCharacterAssetDir, "end.mp4"), "ending");
+
+  const plan = await buildAiCharacterCompositionPlan({
+    job: {} as never,
+    sourceVideoPath: "/tmp/source.mp4",
+    providerRenderPath: "/tmp/provider-render.mp4",
+    outputVideoPath: "/tmp/reaction.mp4",
+    config
+  });
+
+  assert.deepEqual(plan, {
+    top: {
+      videoPath: "/tmp/source.mp4",
+      startTimeSeconds: 3
+    },
+    bottomStart: {
+      videoPath: "/tmp/reaction.mp4",
+      startTimeSeconds: 0
+    },
+    bottomEnd: {
+      videoPath: join(config.aiCharacterAssetDir, "end.mp4"),
+      startAtTopEndOffsetSeconds: -1
+    }
+  });
 });
