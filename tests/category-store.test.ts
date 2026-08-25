@@ -8,8 +8,11 @@ import type { ShortRecord } from "../src/shared/types";
 import {
   DIRECT_IMPORTS_CATEGORY_NAME,
   DIRECT_IMPORTS_CATEGORY_SLUG,
+  REACTION_LIMBO_CATEGORY_NAME,
+  REACTION_LIMBO_CATEGORY_SLUG,
   rewriteSemanticCategoryDumps,
-  upsertDirectImportRecord
+  upsertDirectImportRecord,
+  upsertReactionLimboRecord
 } from "../src/server/category-store";
 import type { RecategorizedCategory } from "../src/shared/types";
 
@@ -85,6 +88,30 @@ test("upsertDirectImportRecord replaces an existing direct import instead of dup
 
   assert.equal(dump.records.length, 1);
   assert.equal(dump.records[0]?.captureTimestamp, "2026-08-24T00:10:00.000Z");
+});
+
+test("upsertReactionLimboRecord keeps preview-only downloads in a dedicated limbo category", async () => {
+  const outputDir = join(tmpdir(), `avatar-category-${randomUUID()}`);
+  await upsertReactionLimboRecord(outputDir, createRecord("preview-video", "2026-08-24T00:15:00.000Z"));
+
+  const dumpPath = join(outputDir, "categories", `${REACTION_LIMBO_CATEGORY_SLUG}.json`);
+  const indexPath = join(outputDir, "categories", "index.json");
+  const dump = JSON.parse(await readFile(dumpPath, "utf8")) as {
+    categorySlug: string;
+    categoryName: string;
+    records: ShortRecord[];
+  };
+  const categoryIndex = JSON.parse(await readFile(indexPath, "utf8")) as {
+    categories: Array<{ slug: string; name: string; recordCount: number }>;
+  };
+
+  assert.equal(dump.categorySlug, REACTION_LIMBO_CATEGORY_SLUG);
+  assert.equal(dump.categoryName, REACTION_LIMBO_CATEGORY_NAME);
+  assert.equal(dump.records.length, 1);
+  assert.equal(dump.records[0]?.id, "preview-video");
+  assert.equal(categoryIndex.categories[0]?.slug, REACTION_LIMBO_CATEGORY_SLUG);
+  assert.equal(categoryIndex.categories[0]?.name, REACTION_LIMBO_CATEGORY_NAME);
+  assert.equal(categoryIndex.categories[0]?.recordCount, 1);
 });
 
 test("rewriteSemanticCategoryDumps can split an old broad category into new topic-specific categories", async () => {

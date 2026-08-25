@@ -9,6 +9,7 @@ import { findShortRecord } from "./load-dumps";
 import { findReusableSourceVideoPathForShort } from "../processing/jobs/job-store";
 import { downloadYoutubeShort } from "../processing/sources/download-youtube-short";
 import { resolveDirectYoutubeShort } from "../processing/sources/direct-youtube-source";
+import { upsertReactionLimboRecord } from "./category-store";
 
 async function pathExists(path: string): Promise<boolean> {
   try {
@@ -69,6 +70,7 @@ export async function loadAdvancedUserReactionPreviewForUrl(
 ): Promise<AdvancedUserReactionPreviewDocument> {
   const record = await resolveDirectYoutubeShort(sourceUrl, config);
   const previewVideoPath = await ensurePreviewVideoPath(record, config);
+  await upsertReactionLimboRecord(config.outputDir, record);
   return {
     record,
     requestedDay: null,

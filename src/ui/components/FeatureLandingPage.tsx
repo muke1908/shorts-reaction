@@ -1,6 +1,5 @@
 interface FeatureLandingPageProps {
-  onOpenQuickReaction: () => void;
-  onOpenPipeline: () => void;
+  onGetStarted: () => void;
 }
 
 function QuickReactionArtwork(): JSX.Element {
@@ -54,34 +53,8 @@ function PipelineArtwork(): JSX.Element {
   );
 }
 
-function SplitDecisionArtwork(): JSX.Element {
-  return (
-    <svg viewBox="0 0 320 160" role="presentation" focusable="false">
-      <defs>
-        <linearGradient id="decisionGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#22d3ee" />
-          <stop offset="50%" stopColor="#60a5fa" />
-          <stop offset="100%" stopColor="#8b5cf6" />
-        </linearGradient>
-      </defs>
-      <circle cx="48" cy="80" r="28" fill="#0f172a" stroke="rgba(148,163,184,0.25)" />
-      <path d="M46 66h8v28h-8zm13 0h8v28h-8z" fill="#e2e8f0" />
-      <path d="M76 80h72" stroke="url(#decisionGlow)" strokeWidth="8" strokeLinecap="round" />
-      <path d="M148 80c28 0 36-26 70-26" fill="none" stroke="url(#decisionGlow)" strokeWidth="8" strokeLinecap="round" />
-      <path d="M148 80c28 0 36 26 70 26" fill="none" stroke="url(#decisionGlow)" strokeWidth="8" strokeLinecap="round" />
-      <rect x="224" y="38" width="58" height="34" rx="14" fill="#0f172a" stroke="rgba(45,212,191,0.55)" />
-      <rect x="224" y="88" width="58" height="34" rx="14" fill="#0f172a" stroke="rgba(139,92,246,0.55)" />
-      <circle cx="244" cy="55" r="8" fill="#22d3ee" />
-      <circle cx="244" cy="105" r="8" fill="#8b5cf6" />
-      <path d="M257 55h14" stroke="#93c5fd" strokeWidth="6" strokeLinecap="round" />
-      <path d="M257 105h14" stroke="#c4b5fd" strokeWidth="6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export function FeatureLandingPage({
-  onOpenQuickReaction,
-  onOpenPipeline
+  onGetStarted
 }: FeatureLandingPageProps): JSX.Element {
   return (
     <main className="layout">
@@ -94,9 +67,6 @@ export function FeatureLandingPage({
               Choose the fast hands-on recorder if you already have a video in mind, or open the pipeline if you want discovery, ranking, and automation first.
             </p>
           </div>
-          <div className="feature-landing__hero-visual" aria-hidden="true">
-            <SplitDecisionArtwork />
-          </div>
         </div>
 
         <div className="feature-landing__grid">
@@ -107,19 +77,16 @@ export function FeatureLandingPage({
             <div className="feature-option-card__badge">Fast and hands-on</div>
             <h2 className="feature-option-card__title">Quick reaction</h2>
             <p className="feature-option-card__copy">
-              Bring a YouTube Short, control the timing yourself, and record a staged reaction clip in minutes.
+              Start from a YouTube URL inside the pipeline, then jump straight into the staged recorder when you choose a user-media provider.
             </p>
             <div className="feature-option-card__fit">
               Best when you already have a source video and want speed, manual control, and immediate preview.
             </div>
             <ul className="feature-option-card__list">
-              <li>Paste a Shorts, watch, or youtu.be URL</li>
-              <li>Play, pause, and record exactly when you want</li>
-              <li>Preview the staged output right after capture</li>
+              <li>Paste a Shorts, watch, or youtu.be URL into the pipeline</li>
+              <li>Choose any user-media provider to open the advanced recorder</li>
+              <li>Play, pause, and preview the staged output on your timing</li>
             </ul>
-            <button type="button" className="scan-button feature-option-card__action" onClick={onOpenQuickReaction}>
-              Record a quick reaction
-            </button>
           </article>
 
           <article className="feature-option-card feature-option-card--pipeline">
@@ -139,10 +106,18 @@ export function FeatureLandingPage({
               <li>Process ranked Shorts or paste direct URLs</li>
               <li>Track outputs, telemetry, and Copilot activity in one place</li>
             </ul>
-            <button type="button" className="secondary-button feature-option-card__action" onClick={onOpenPipeline}>
-              Open pipeline
-            </button>
           </article>
+        </div>
+
+        <div className="feature-landing__footer">
+          <button type="button" className="scan-button feature-landing__cta" onClick={onGetStarted}>
+            <span>Get started</span>
+            <span className="feature-landing__cta-icon" aria-hidden="true">
+              <svg viewBox="0 0 20 20" focusable="false">
+                <path d="M4 10h9.2l-3.1-3.1 1.4-1.4L17 11l-5.5 5.5-1.4-1.4 3.1-3.1H4z" />
+              </svg>
+            </span>
+          </button>
         </div>
       </section>
     </main>

@@ -1,8 +1,8 @@
 # YouTube Shorts Reaction Studio
 
-This repository ships a **two-surface product** for making reaction content from YouTube Shorts:
+This repository ships a **two-part product flow** for making reaction content from YouTube Shorts:
 
-1. **Quick reaction** — paste a YouTube URL, open the recorder, then **play, react, and record** locally.
+1. **Quick reaction path** — paste a YouTube URL in the pipeline, choose a user-media provider, then jump into the advanced recorder to **play, react, and record** locally.
 2. **LLM-driven trending-video pipeline** — scan a topic, let Copilot discover and rank likely viral Shorts, then **generate reaction outputs automatically** with the built-in processing pipeline.
 
 Both surfaces are exposed from the same app, share the same Node/React stack, and reuse the same downloader, provider, and 9:16 composition pipeline.
@@ -12,9 +12,8 @@ Both surfaces are exposed from the same app, share the same Node/React stack, an
 | Surface | Route | What it is for |
 | --- | --- | --- |
 | Feature chooser | `/` | Landing page that lets you choose between the two major workflows |
-| Quick reaction | `/quick-reaction` | Fast start flow for pasting a Short, picking a capture mode, and opening the recorder |
-| Advanced reaction recorder | `/quick-reaction/advanced` | Immersive 9:16 stage where you manually control playback, react, and record the composed canvas |
 | LLM pipeline dashboard | `/pipeline` | Copilot-driven discovery, ranking, categorization, direct URL processing, and automated reaction generation |
+| Advanced reaction recorder | `/advanced/user-reaction` | Immersive 9:16 stage opened from the pipeline when you choose a user-media provider |
 
 ## Screenshots
 
@@ -22,24 +21,20 @@ Both surfaces are exposed from the same app, share the same Node/React stack, an
 
 ![Feature chooser](docs/assets/feature-landing.png)
 
-### Quick reaction
-
-![Quick reaction](docs/assets/quick-reaction-start.png)
-
 ### LLM pipeline dashboard
 
 ![LLM pipeline dashboard](docs/assets/pipeline-dashboard.png)
 
-## Surface 1: Quick reaction
+## Surface 1: Quick reaction path
 
-The quick-reaction side of the product is for a creator who already knows which Short they want to respond to and wants the fastest path to a staged recording.
+The quick-reaction path is for a creator who already knows which Short they want to respond to and wants the fastest path to a staged recording.
 
 ### What it actually does
 
-1. Open `/quick-reaction`.
-2. Paste a YouTube Shorts, watch, or `youtu.be` URL.
-3. Choose a **user-media capture mode**.
-4. Open the recorder.
+1. Open `/pipeline`.
+2. Paste a YouTube Shorts, watch, or `youtu.be` URL into **Process from URL**.
+3. Choose a **user-media** provider.
+4. Open the advanced recorder.
 5. Turn the camera on, start recording, and manually play or pause the source video.
 6. Save the draft to open the captured stage output in a new browser tab.
 
@@ -59,7 +54,7 @@ The advanced recorder captures the **rendered 9:16 stage**, not just the raw web
 - **User media + sunglasses**
 - **User media + pixelated**
 
-Use this surface when the goal is: **I already have a Short; let me play, react, and record right now.**
+Use this path when the goal is: **I already have a Short; let me play, react, and record right now.**
 
 ## Surface 2: LLM-driven trending-video pipeline
 
@@ -95,7 +90,7 @@ Current processing providers:
 | Provider | What it does |
 | --- | --- |
 | **AI character (static)** | Reuses a local server-hosted reaction clip from `data/static/ai-character` |
-| **User media** | Records your own camera clip inline and uses it as the lower reaction layer |
+| **User media** | Opens the advanced recorder and uses your captured stage output as the lower reaction layer |
 | **User media + sunglasses** | Uses the same browser recorder with a live sunglasses anonymizer |
 | **User media + pixelated** | Uses the same browser recorder with a pixelation anonymizer |
 | **HeyGen avatar** | Renders the lower reaction layer through the HeyGen CLI/OAuth path when available, with API fallback |
@@ -153,8 +148,7 @@ The local server runs on `http://localhost:3000` by default.
 Once the server is running:
 
 - open `/` to choose a product surface
-- open `/quick-reaction` to start the live **play, react, record** flow
-- open `/pipeline` to run the LLM-driven discovery and automated generation workflow
+- open `/pipeline` to run discovery, direct URL processing, and the quick-reaction recorder flow
 
 If you already have dump data and only want to serve the app:
 
@@ -173,7 +167,7 @@ npm run serve
 | `npm run build` | Type-checks and builds the React UI |
 | `npm run serve` | Starts the local API/UI server |
 | `npm run test` | Runs the lightweight test suite |
-| `npm run test:ui` | Runs the browser workflow checks for the landing page and quick-reaction flow |
+| `npm run test:ui` | Runs the browser workflow checks for the landing page and the pipeline-to-recorder flow |
 
 ## Outputs written to disk
 

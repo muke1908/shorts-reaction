@@ -1,4 +1,5 @@
 import type { PipelineConfig, ScoreBreakdown, ShortRecord } from "../../shared/types";
+import { extractYoutubeVideoId } from "../../shared/youtube-url";
 import { runCommand } from "../media/run-command";
 import { toShortsUrl } from "../../pipeline/sources/shorts-eligibility";
 
@@ -44,36 +45,7 @@ function parsePublishedAt(metadata: YtDlpMetadata): string {
   return new Date().toISOString();
 }
 
-export function extractYoutubeVideoId(url: string): string | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return null;
-  }
-
-  const hostname = parsed.hostname.replace(/^www\./, "");
-  if (hostname === "youtu.be") {
-    const candidate = parsed.pathname.split("/").filter(Boolean)[0] ?? "";
-    return /^[A-Za-z0-9_-]{11}$/.test(candidate) ? candidate : null;
-  }
-
-  if (hostname !== "youtube.com" && hostname !== "m.youtube.com") {
-    return null;
-  }
-
-  if (parsed.pathname === "/watch") {
-    const candidate = parsed.searchParams.get("v") ?? "";
-    return /^[A-Za-z0-9_-]{11}$/.test(candidate) ? candidate : null;
-  }
-
-  if (parsed.pathname.startsWith("/shorts/")) {
-    const candidate = parsed.pathname.split("/").filter(Boolean)[1] ?? "";
-    return /^[A-Za-z0-9_-]{11}$/.test(candidate) ? candidate : null;
-  }
-
-  return null;
-}
+export { extractYoutubeVideoId } from "../../shared/youtube-url";
 
 export async function resolveDirectYoutubeShort(url: string, config: PipelineConfig): Promise<ShortRecord> {
   const videoId = extractYoutubeVideoId(url);

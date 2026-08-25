@@ -112,10 +112,58 @@ function mockPipelineApis(page: Page): void {
   const dumpPayload = {
     generatedAt: "2026-08-25T00:00:00.000Z",
     requestedDay: null,
+    records: [],
+    metadata: {
+      startedAt: "2026-08-25T00:00:00.000Z",
+      completedAt: "2026-08-25T00:00:02.000Z",
+      keywordSeeds: ["indian politics"],
+      scanQuery: "indian politics",
+      sourceStrategy: "hybrid",
+      usedFallback: false,
+      itemCount: 0,
+      outputFiles: [],
+      workflowFiles: []
+    }
+  };
+
+  const firstCategoryDumpPayload = {
+    generatedAt: "2026-08-25T00:00:00.000Z",
+    requestedDay: null,
     categorySlug: "direct-imports",
     categoryName: "Direct imports",
     searchQuery: "indian politics",
-    records: [],
+    records: [
+      {
+        id: "short-001",
+        title: "Sample direct import",
+        url: "https://www.youtube.com/shorts/short-001",
+        channel: "Sample Channel",
+        channelId: null,
+        description: "",
+        publishedAt: "2026-08-25T00:00:00.000Z",
+        captureTimestamp: "2026-08-25T00:00:00.000Z",
+        views: 1000,
+        likes: 100,
+        comments: 10,
+        commentsEnabled: true,
+        durationSeconds: 20,
+        keywordSeed: "indian politics",
+        matchedKeywords: [],
+        llmReview: null,
+        score: 42,
+        scoreBreakdown: {
+          reach: 10,
+          viewVelocity: 8,
+          engagement: 9,
+          conversation: 5,
+          freshness: 10,
+          sourceCompletenessPenalty: 0,
+          total: 42,
+          reasons: []
+        },
+        source: "youtube-web"
+      }
+    ],
     metadata: {
       startedAt: "2026-08-25T00:00:00.000Z",
       completedAt: "2026-08-25T00:00:02.000Z",
@@ -125,7 +173,7 @@ function mockPipelineApis(page: Page): void {
       parentCategoryName: "Direct imports",
       sourceStrategy: "hybrid",
       usedFallback: false,
-      itemCount: 0,
+      itemCount: 1,
       outputFiles: [],
       workflowFiles: []
     }
@@ -188,8 +236,11 @@ function mockPipelineApis(page: Page): void {
     platform: process.platform
   };
 
-  void page.route("**/api/dump", async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(dumpPayload) });
+  void page.route("**/api/dump**", async (route) => {
+    const payload = route.request().url().includes("category=direct-imports")
+      ? firstCategoryDumpPayload
+      : dumpPayload;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(payload) });
   });
   void page.route("**/api/categories", async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(categoryPayload) });
@@ -213,7 +264,7 @@ test.after(async () => {
   await stopTestServer();
 });
 
-test("landing page clearly routes customers into the right surface", async () => {
+test("landing page quick reaction entry opens the pipeline surface", async () => {
   const page = await browser.newPage();
 
   try {
@@ -221,28 +272,29 @@ test("landing page clearly routes customers into the right surface", async () =>
 
     await page.goto(TEST_BASE_URL);
 
-    assert.equal(
-      await page.getByRole("heading", { name: "What do you want to create?" }).isVisible(),
-      true
-    );
-    assert.equal(await page.getByRole("button", { name: "Record a quick reaction" }).isVisible(), true);
-    assert.equal(await page.getByRole("button", { name: "Open pipeline" }).isVisible(), true);
+    await page.getByRole("heading", { name: "What do you want to create?" }).waitFor();
+    await page.getByRole("button", { name: "Get started" }).waitFor();
 
-    await page.getByRole("button", { name: "Open pipeline" }).click();
+    await page.getByRole("button", { name: "Get started" }).click();
 
     await page.waitForURL(`${TEST_BASE_URL}/pipeline`);
-    await page.getByRole("heading", { name: "Discover, rank, and process Shorts from one control surface." }).waitFor();
-    await page.getByRole("button", { name: "Process URL" }).waitFor();
+    await page.getByRole("heading", { name: "Reaction studio" }).waitFor();
+    await page.getByRole("button", { name: "Submit" }).waitFor();
+    await page.getByText("Sample direct import").waitFor();
   } finally {
     await page.close();
   }
 });
 
-test("quick reaction workflow validates input and preserves the selected mode into the recorder", async () => {
+test("pipeline direct URL flow opens advanced recorder for user-media providers", async () => {
   const page = await browser.newPage();
 
   try {
+    mockPipelineApis(page);
     await page.route("**/api/user-reaction/preview?**", async (route) => {
+      await new Promise((resolvePromise) => {
+        setTimeout(resolvePromise, 250);
+      });
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -287,47 +339,33 @@ test("quick reaction workflow validates input and preserves the selected mode in
       await route.fulfill({ status: 200, contentType: "video/mp4", body: "" });
     });
 
-    await page.goto(`${TEST_BASE_URL}/quick-reaction`);
+    await page.goto(`${TEST_BASE_URL}/pipeline`);
+    await page.getByRole("button", { name: "Submit" }).waitFor();
 
-    assert.equal(
-      await page.getByRole("heading", { name: "Set up your reaction take." }).isVisible(),
-      true
-    );
+    const processButton = page.locator(".direct-url-panel .process-button");
+    assert.equal(await processButton.textContent(), "Submit");
 
-    const openRecorderButton = page.getByRole("button", { name: "Open recorder" });
-    assert.equal(await openRecorderButton.isDisabled(), true);
+    await page.getByLabel("Pipeline").selectOption("user-media-sunglasses");
+    assert.equal(await processButton.textContent(), "Submit");
 
     await page.getByLabel("YouTube URL").fill("https://example.com/watch?v=abc123DEF45");
-    await page.locator(".quick-reaction-start__support--error").waitFor();
-    assert.match(
-      (await page.locator(".quick-reaction-start__support").textContent()) ?? "",
-      /Enter a valid YouTube URL/
-    );
-    assert.equal(await openRecorderButton.isDisabled(), true);
+    await processButton.click();
+    await page.getByText("Paste a valid YouTube URL before you submit.").waitFor();
 
     await page.getByLabel("YouTube URL").fill("https://youtu.be/abc123DEF45");
-    await page.getByLabel("Reaction mode").selectOption("user-media-sunglasses");
+    assert.equal(await processButton.textContent(), "Submit");
+    assert.equal(await processButton.isDisabled(), false);
 
-    await page.locator(".quick-reaction-start__support--valid").waitFor();
-    assert.match(
-      (await page.locator(".quick-reaction-start__support").textContent()) ?? "",
-      /https:\/\/www\.youtube\.com\/shorts\/abc123DEF45/
-    );
-    assert.match(
-      (await page.locator(".quick-reaction-start__mode-copy").textContent()) ?? "",
-      /face-following sunglasses mask/
-    );
-    assert.equal(await openRecorderButton.isDisabled(), false);
+    await processButton.click();
 
-    await openRecorderButton.click();
-
-    await page.waitForURL(/\/quick-reaction\/advanced\?/);
+    await page.waitForURL(/\/advanced\/user-reaction\?/);
+    await page.getByRole("status").getByText("Loading source video...").waitFor();
     assert.match(page.url(), /provider=user-media-sunglasses/);
-    assert.match(page.url(), /sourceUrl=https%3A%2F%2Fwww\.youtube\.com%2Fshorts%2Fabc123DEF45/);
+    assert.match(page.url(), /sourceUrl=https%3A%2F%2Fyoutu\.be%2Fabc123DEF45/);
     assert.equal(await page.getByRole("button", { name: "Close advanced user reaction" }).isVisible(), true);
 
     await page.getByRole("button", { name: "Close advanced user reaction" }).click();
-    await page.waitForURL(`${TEST_BASE_URL}/quick-reaction`);
+    await page.waitForURL(`${TEST_BASE_URL}/pipeline`);
   } finally {
     await page.close();
   }

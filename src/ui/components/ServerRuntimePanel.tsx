@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import type { ServerRuntimeStatus } from "../../shared/types";
 
+interface ServerRuntimePanelProps {
+  embedded?: boolean;
+  compact?: boolean;
+  title?: string;
+}
+
 interface SparklineProps {
   label: string;
   colorClassName: string;
@@ -47,7 +53,11 @@ async function fetchJson<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export function ServerRuntimePanel(): JSX.Element | null {
+export function ServerRuntimePanel({
+  embedded = false,
+  compact = false,
+  title = "System health"
+}: ServerRuntimePanelProps): JSX.Element | null {
   const [history, setHistory] = useState<ServerRuntimeStatus[]>([]);
 
   useEffect(() => {
@@ -84,11 +94,10 @@ export function ServerRuntimePanel(): JSX.Element | null {
   const loadValues = history.map((item) => item.loadAverage[0]);
 
   return (
-    <section className="panel runtime-monitor">
+    <section className={`panel runtime-monitor${compact ? " runtime-monitor--compact" : ""}${embedded ? " runtime-monitor--embedded" : ""}`}>
       <div className="runtime-monitor__header">
         <div>
-          <div className="eyebrow">tech-focused-monitor-ui</div>
-          <h2 className="runtime-monitor__title">Server runtime telemetry</h2>
+          <h2 className="runtime-monitor__title">{title}</h2>
         </div>
         <div className="runtime-monitor__status-pill">LIVE</div>
       </div>

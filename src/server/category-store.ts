@@ -13,6 +13,9 @@ import type {
 export const DIRECT_IMPORTS_CATEGORY_SLUG = "direct-imports";
 export const DIRECT_IMPORTS_CATEGORY_NAME = "Direct imports";
 const DIRECT_IMPORTS_CATEGORY_QUERY = "Manual YouTube URL imports";
+export const REACTION_LIMBO_CATEGORY_SLUG = "reaction-limbo";
+export const REACTION_LIMBO_CATEGORY_NAME = "Reaction limbo";
+const REACTION_LIMBO_CATEGORY_QUERY = "Previewed YouTube URL downloads";
 
 function now(): string {
   return new Date().toISOString();
@@ -82,6 +85,10 @@ export async function loadSemanticCategoryRecords(outputDir: string): Promise<Ex
     try {
       const dump = JSON.parse(await readFile(path, "utf8")) as DumpDocument;
       if (!dump.categorySlug || !dump.categoryName) {
+        continue;
+      }
+
+      if (dump.categorySlug === REACTION_LIMBO_CATEGORY_SLUG) {
         continue;
       }
 
@@ -207,6 +214,19 @@ export async function rewriteSemanticCategoryDumps(
           ?? [directImportsDump.searchQuery ?? DIRECT_IMPORTS_CATEGORY_QUERY]
       }
     : null;
+  const reactionLimboDump = await loadCategoryDump(outputDir, REACTION_LIMBO_CATEGORY_SLUG).catch(() => null);
+  const reactionLimboSummary = reactionLimboDump
+    ? {
+        slug: REACTION_LIMBO_CATEGORY_SLUG,
+        name: reactionLimboDump.categoryName ?? REACTION_LIMBO_CATEGORY_NAME,
+        latestQuery: reactionLimboDump.searchQuery ?? REACTION_LIMBO_CATEGORY_QUERY,
+        latestScanAt: reactionLimboDump.generatedAt,
+        recordCount: reactionLimboDump.records.length,
+        scanCount: existingIndex.categories.find((entry) => entry.slug === REACTION_LIMBO_CATEGORY_SLUG)?.scanCount ?? 1,
+        queries: existingIndex.categories.find((entry) => entry.slug === REACTION_LIMBO_CATEGORY_SLUG)?.queries
+          ?? [reactionLimboDump.searchQuery ?? REACTION_LIMBO_CATEGORY_QUERY]
+      }
+    : null;
 
   const semanticSummaries = categories.map((category) => {
     const existingSummary = existingIndex.categories.find((entry) => entry.slug === category.slug);
@@ -225,7 +245,11 @@ export async function rewriteSemanticCategoryDumps(
 
   await writeCategoryIndex(outputDir, {
     generatedAt: options.generatedAt,
-    categories: [...semanticSummaries, ...(directImportsSummary ? [directImportsSummary] : [])]
+    categories: [
+      ...semanticSummaries,
+      ...(directImportsSummary ? [directImportsSummary] : []),
+      ...(reactionLimboSummary ? [reactionLimboSummary] : [])
+    ]
       .sort((left, right) => right.latestScanAt.localeCompare(left.latestScanAt))
   });
 
@@ -293,6 +317,15 @@ export async function upsertDirectImportRecord(outputDir: string, short: ShortRe
     slug: DIRECT_IMPORTS_CATEGORY_SLUG,
     name: DIRECT_IMPORTS_CATEGORY_NAME,
     latestQuery: DIRECT_IMPORTS_CATEGORY_QUERY,
+    generatedAt: short.captureTimestamp
+  });
+}
+
+export async function upsertReactionLimboRecord(outputDir: string, short: ShortRecord): Promise<DumpDocument> {
+  return upsertCategoryRecord(outputDir, short, {
+    slug: REACTION_LIMBO_CATEGORY_SLUG,
+    name: REACTION_LIMBO_CATEGORY_NAME,
+    latestQuery: REACTION_LIMBO_CATEGORY_QUERY,
     generatedAt: short.captureTimestamp
   });
 }

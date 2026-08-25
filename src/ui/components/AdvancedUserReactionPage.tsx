@@ -74,8 +74,10 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
   const [sourceFeedElement, setSourceFeedElement] = useState<HTMLVideoElement | null>(null);
   const [previewDocument, setPreviewDocument] = useState<AdvancedUserReactionPreviewDocument | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(true);
+  const [sourceVideoReady, setSourceVideoReady] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [autoStartRecording, setAutoStartRecording] = useState(false);
   const [recording, setRecording] = useState(false);
   const [sourcePlaying, setSourcePlaying] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -85,14 +87,19 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
   const canRecord = useMemo(() => supportsUserMediaRecording(), []);
   const anonymizer = providerUserMediaAnonymizer(props.provider);
   const canToggleCamera = !recording && !saving;
-  const canStartRecording = cameraEnabled && cameraReady && !loadingPreview && !recording && !saving;
-  const canTogglePlayback = Boolean(sourceFeedElement);
+  const canPressRecord = canRecord && sourceVideoReady && !loadingPreview && !saving;
+  const canTogglePlayback = Boolean(sourceFeedElement) && sourceVideoReady && !loadingPreview;
   const canSave = !recording && !saving && Boolean(recordedMedia);
   const canRestart = !recording;
+  const sourceLoadMessage = loadingPreview || (previewDocument && !sourceVideoReady)
+    ? "Loading source video..."
+    : null;
   const statusMessage = recording
     ? "Recording is live. Use Play to start the source clip and Pause to stop it."
     : recordedMedia
       ? "Recording draft is ready. Save opens it in a new tab, or reset to discard it."
+      : sourceLoadMessage
+        ? sourceLoadMessage
       : cameraReady
         ? "The source stays stopped until you press Play."
         : "";
@@ -127,6 +134,8 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
 
   useEffect(() => {
     setLoadingPreview(true);
+    setSourceVideoReady(false);
+    setPreviewDocument(null);
     setError(null);
     fetchJson<AdvancedUserReactionPreviewDocument>(buildPreviewPath(props))
       .then((payload) => {
@@ -240,6 +249,7 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
       return;
     }
 
+    setSourceVideoReady(false);
     sourceFeedElement.currentTime = 0;
     sourceFeedElement.pause();
     setSourcePlaying(false);
@@ -306,53 +316,6 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
       context.drawImage(video, drawLeft, drawTop, drawWidth, drawHeight);
     };
 
-    const drawDisabledCameraGlyph = (
-      left: number,
-      top: number,
-      frameWidth: number,
-      frameHeight: number
-    ) => {
-      const iconSize = Math.max(42, Math.min(84, Math.floor(frameHeight * 0.22)));
-      const iconLeft = left + ((frameWidth - iconSize) / 2);
-      const iconTop = top + ((frameHeight - iconSize) / 2);
-
-      context.save();
-      context.strokeStyle = "rgba(148, 163, 184, 0.9)";
-      context.lineWidth = Math.max(2, iconSize * 0.06);
-      context.lineJoin = "round";
-      context.lineCap = "round";
-
-      const bodyX = iconLeft + (iconSize * 0.14);
-      const bodyY = iconTop + (iconSize * 0.24);
-      const bodyWidth = iconSize * 0.5;
-      const bodyHeight = iconSize * 0.34;
-      const bodyRadius = iconSize * 0.08;
-      const lensWidth = iconSize * 0.16;
-      const lensHeight = iconSize * 0.16;
-      const lensX = bodyX + bodyWidth;
-      const lensY = iconTop + (iconSize * 0.33);
-
-      context.beginPath();
-      context.roundRect(bodyX, bodyY, bodyWidth, bodyHeight, bodyRadius);
-      context.stroke();
-
-      context.beginPath();
-      context.moveTo(lensX, lensY + (lensHeight * 0.12));
-      context.lineTo(lensX + lensWidth, lensY);
-      context.lineTo(lensX + lensWidth, lensY + lensHeight);
-      context.lineTo(lensX, lensY + (lensHeight * 0.88));
-      context.closePath();
-      context.stroke();
-
-      context.beginPath();
-      context.moveTo(iconLeft + (iconSize * 0.18), iconTop + (iconSize * 0.16));
-      context.lineTo(iconLeft + (iconSize * 0.82), iconTop + (iconSize * 0.8));
-      context.strokeStyle = "rgba(248, 113, 113, 0.92)";
-      context.lineWidth = Math.max(3, iconSize * 0.08);
-      context.stroke();
-      context.restore();
-    };
-
     let animationFrameId: number | null = null;
     const drawFrame = () => {
       context.clearRect(0, 0, stageFrame.width, stageFrame.height);
@@ -379,10 +342,6 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
           stageFrame.width,
           stageFrame.cameraHeight
         );
-      }
-
-      if (!cameraReady) {
-        drawDisabledCameraGlyph(0, stageFrame.cameraTop, stageFrame.width, stageFrame.cameraHeight);
       }
 
       animationFrameId = window.requestAnimationFrame(drawFrame);
@@ -448,6 +407,91 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
     };
   }, [sourceFeedElement]);
 
+  const startRecording = useCallback(async (): Promise<void> => {
+    if (!previewDocument) {
+      throw new Error("Source preview is still loading.");
+    }
+
+    if (!sourceVideoReady) {
+      throw new Error("Wait for the source video to finish loading before you start recording.");
+    }
+
+    if (!cameraReady) {
+      throw new Error("Camera preview is not ready yet.");
+    }
+
+    setError(null);
+    setRecordedMedia(null);
+    recorderCleanupRef.current?.();
+    const stageRecording = await createStageRecordingStream();
+    recorderCleanupRef.current = stageRecording.cleanup;
+    const mimeType = preferredRecordingMimeType();
+    const recorder = mimeType
+      ? new MediaRecorder(stageRecording.stream, { mimeType })
+      : new MediaRecorder(stageRecording.stream);
+    chunksRef.current = [];
+    recorderRef.current = recorder;
+
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        chunksRef.current.push(event.data);
+      }
+    };
+
+    recorder.onstop = async () => {
+      try {
+        const blob = new Blob(chunksRef.current, {
+          type: recorder.mimeType || "video/webm"
+        });
+        setRecordedMedia({
+          mimeType: blob.type || "video/webm",
+          base64: await mediaBlobToBase64(blob)
+        });
+      } catch (reason: unknown) {
+        setError(reason instanceof Error ? reason.message : String(reason));
+      } finally {
+        recorderCleanupRef.current?.();
+        recorderCleanupRef.current = null;
+      }
+    };
+
+    recorder.start();
+    setRecording(true);
+  }, [cameraReady, createStageRecordingStream, previewDocument, sourceVideoReady]);
+
+  useEffect(() => {
+    if (!autoStartRecording) {
+      return;
+    }
+
+    if (recording || saving || loadingPreview || !sourceVideoReady) {
+      return;
+    }
+
+    if (!cameraEnabled) {
+      setCameraEnabled(true);
+      return;
+    }
+
+    if (!cameraReady) {
+      return;
+    }
+
+    setAutoStartRecording(false);
+    startRecording().catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    });
+  }, [
+    autoStartRecording,
+    cameraEnabled,
+    cameraReady,
+    loadingPreview,
+    recording,
+    saving,
+    sourceVideoReady,
+    startRecording
+  ]);
+
   const stopRecording = useCallback(() => {
     if (recorderRef.current?.state === "recording") {
       recorderRef.current.stop();
@@ -492,56 +536,9 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
     }
 
     setError(null);
+    setAutoStartRecording(false);
     setCameraEnabled((current) => !current);
   }, [canToggleCamera]);
-
-  async function startRecording(): Promise<void> {
-    if (!previewDocument) {
-      throw new Error("Source preview is still loading.");
-    }
-
-    if (!cameraReady) {
-      throw new Error("Camera preview is not ready yet.");
-    }
-
-    setError(null);
-    setRecordedMedia(null);
-    recorderCleanupRef.current?.();
-    const stageRecording = await createStageRecordingStream();
-    recorderCleanupRef.current = stageRecording.cleanup;
-    const mimeType = preferredRecordingMimeType();
-    const recorder = mimeType
-      ? new MediaRecorder(stageRecording.stream, { mimeType })
-      : new MediaRecorder(stageRecording.stream);
-    chunksRef.current = [];
-    recorderRef.current = recorder;
-
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        chunksRef.current.push(event.data);
-      }
-    };
-
-    recorder.onstop = async () => {
-      try {
-        const blob = new Blob(chunksRef.current, {
-          type: recorder.mimeType || "video/webm"
-        });
-        setRecordedMedia({
-          mimeType: blob.type || "video/webm",
-          base64: await mediaBlobToBase64(blob)
-        });
-      } catch (reason: unknown) {
-        setError(reason instanceof Error ? reason.message : String(reason));
-      } finally {
-        recorderCleanupRef.current?.();
-        recorderCleanupRef.current = null;
-      }
-    };
-
-    recorder.start();
-    setRecording(true);
-  }
 
   async function saveDraftRecording(): Promise<void> {
     if (!recordedMedia) {
@@ -575,7 +572,45 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
           ref={stageAreaRef}
           className={`advanced-reaction-page__stage-area${recording ? " advanced-reaction-page__stage-area--recording" : ""}`}
         >
-          <canvas ref={stageCanvasRef} className="advanced-stage-canvas" />
+          <div
+            className="advanced-reaction-page__stage-frame"
+            style={stageFrame ? { width: `${stageFrame.width}px`, height: `${stageFrame.height}px` } : undefined}
+          >
+            <div
+              className="advanced-reaction-page__stage-toolbar"
+              style={stageFrame ? {
+                top: `${stageFrame.cameraTop + 14}px`
+              } : undefined}
+            >
+              <button
+                className={`advanced-reaction-page__stage-toolbar-button${!cameraEnabled ? " advanced-reaction-page__stage-toolbar-button--active" : ""}`}
+                type="button"
+                aria-label={cameraEnabled ? "Turn camera off" : "Turn camera on"}
+                disabled={!canToggleCamera}
+                onClick={toggleCamera}
+              >
+                <span className="advanced-reaction-page__action-icon" aria-hidden="true">
+                  {!cameraEnabled ? (
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M9 6.5 10.4 5h3.2L15 6.5h2.5A2.5 2.5 0 0 1 20 9v6a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 15V9a2.5 2.5 0 0 1 2.5-2.5H9Zm3 2.25A3.25 3.25 0 1 0 12 15.25 3.25 3.25 0 0 0 12 8.75Zm0 1.75A1.5 1.5 0 1 1 10.5 12 1.5 1.5 0 0 1 12 10.5Z" />
+                      <path d="M6 6 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M9 6.5 10.4 5h3.2L15 6.5h2.5A2.5 2.5 0 0 1 20 9v6a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 15V9a2.5 2.5 0 0 1 2.5-2.5H9Zm3 2.25A3.25 3.25 0 1 0 12 15.25 3.25 3.25 0 0 0 12 8.75Zm0 1.75A1.5 1.5 0 1 1 10.5 12 1.5 1.5 0 0 1 12 10.5Z" />
+                    </svg>
+                  )}
+                </span>
+              </button>
+            </div>
+            <canvas ref={stageCanvasRef} className="advanced-stage-canvas" />
+            {sourceLoadMessage ? (
+              <div className="advanced-reaction-page__source-loader" role="status" aria-live="polite">
+                <span className="advanced-reaction-page__source-loader-spinner" aria-hidden="true" />
+                <span className="advanced-reaction-page__source-loader-label">{sourceLoadMessage}</span>
+              </div>
+            ) : null}
+          </div>
           <video
             ref={setSourceFeedElement}
             className="advanced-stage-preview__feed"
@@ -583,6 +618,15 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
             muted
             playsInline
             preload="auto"
+            onLoadedData={() => {
+              setSourceVideoReady(true);
+            }}
+            onCanPlay={() => {
+              setSourceVideoReady(true);
+            }}
+            onError={() => {
+              setError("The source video could not be loaded into the reaction stage.");
+            }}
           />
           <video
             ref={setCameraFeedElement}
@@ -597,26 +641,22 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
           <div className="advanced-reaction-page__actions">
             <div className="advanced-reaction-page__action-group advanced-reaction-page__action-group--start">
               <button
-                className={`advanced-reaction-page__action-button advanced-reaction-page__action-button--icon${cameraEnabled ? " advanced-reaction-page__action-button--danger" : ""}`}
-                type="button"
-                aria-label={cameraEnabled ? "Turn camera off" : "Turn camera on"}
-                disabled={!canToggleCamera}
-                onClick={toggleCamera}
-              >
-                <span className="advanced-reaction-page__action-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M9 6.5 10.4 5h3.2L15 6.5h2.5A2.5 2.5 0 0 1 20 9v6a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 15V9a2.5 2.5 0 0 1 2.5-2.5H9Zm3 2.25A3.25 3.25 0 1 0 12 15.25 3.25 3.25 0 0 0 12 8.75Zm0 1.75A1.5 1.5 0 1 1 10.5 12 1.5 1.5 0 0 1 12 10.5Z" />
-                  </svg>
-                </span>
-              </button>
-              <button
-                className={`advanced-reaction-page__action-button advanced-reaction-page__action-button--icon ${recording ? "advanced-reaction-page__action-button--danger" : "advanced-reaction-page__action-button--primary"}`}
+                className={`advanced-reaction-page__action-button advanced-reaction-page__action-button--icon advanced-reaction-page__action-button--record${recording ? " advanced-reaction-page__action-button--recording" : ""}`}
                 type="button"
                 aria-label={recording ? "Stop recording" : "Start recording"}
-                disabled={recording ? false : !canStartRecording}
+                disabled={recording ? false : !canPressRecord}
                 onClick={() => {
                   if (recording) {
                     stopRecording();
+                    return;
+                  }
+
+                  if (!cameraEnabled || !cameraReady) {
+                    setError(null);
+                    setAutoStartRecording(true);
+                    if (!cameraEnabled) {
+                      setCameraEnabled(true);
+                    }
                     return;
                   }
 
@@ -625,17 +665,10 @@ export function AdvancedUserReactionPage(props: AdvancedUserReactionPageProps): 
                   });
                 }}
               >
-                <span className="advanced-reaction-page__action-icon" aria-hidden="true">
-                  {recording ? (
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <rect x="6" y="6" width="12" height="12" rx="1.5" />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <circle cx="12" cy="12" r="6" />
-                    </svg>
-                  )}
-                </span>
+                <span
+                  className={`advanced-reaction-page__record-dot${recording ? " advanced-reaction-page__record-dot--recording" : ""}`}
+                  aria-hidden="true"
+                />
               </button>
             </div>
 

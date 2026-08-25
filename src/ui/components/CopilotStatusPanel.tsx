@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import type { CopilotRuntimeStatus } from "../../shared/types";
 import { formatDate, formatNumber } from "../lib/format";
 
+interface CopilotStatusPanelProps {
+  embedded?: boolean;
+  compact?: boolean;
+  title?: string;
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   const response = await fetch(path);
   if (!response.ok) {
@@ -11,7 +17,11 @@ async function fetchJson<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export function CopilotStatusPanel(): JSX.Element {
+export function CopilotStatusPanel({
+  embedded = false,
+  compact = false,
+  title = "Copilot activity"
+}: CopilotStatusPanelProps): JSX.Element {
   const [status, setStatus] = useState<CopilotRuntimeStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -70,11 +80,10 @@ export function CopilotStatusPanel(): JSX.Element {
   };
 
   return (
-    <section className="panel copilot-monitor">
+    <section className={`panel copilot-monitor${compact ? " copilot-monitor--compact" : ""}${embedded ? " copilot-monitor--embedded" : ""}`}>
       <div className="copilot-monitor__header">
         <div>
-          <div className="eyebrow">copilot-neural-console</div>
-          <h2 className="copilot-monitor__title">Copilot status bus</h2>
+          <h2 className="copilot-monitor__title">{title}</h2>
         </div>
         <div className={`copilot-monitor__status-pill${status?.active ? " copilot-monitor__status-pill--active" : ""}`}>
           {status?.active ? "ACTIVE" : "IDLE"}
